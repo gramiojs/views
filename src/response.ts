@@ -1,4 +1,4 @@
-import type { APIMethodParams } from "gramio";
+import type { APIMethodParams, TelegramInputMedia } from "gramio";
 
 type Text = string | { toString(): string };
 
@@ -8,6 +8,7 @@ export class ResponseView {
 		keyboard: undefined as
 			| APIMethodParams<"sendMessage">["reply_markup"]
 			| undefined,
+		media: undefined as TelegramInputMedia | undefined,
 	};
 
 	text(text: Text) {
@@ -18,6 +19,12 @@ export class ResponseView {
 
 	keyboard(keyboard: APIMethodParams<"sendMessage">["reply_markup"]) {
 		this.response.keyboard = keyboard;
+
+		return this;
+	}
+
+	media(media: TelegramInputMedia) {
+		this.response.media = media;
 
 		return this;
 	}

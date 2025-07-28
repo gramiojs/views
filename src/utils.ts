@@ -1,4 +1,4 @@
-import type { BotLike, Context } from "gramio";
+import type { BotLike, Context, TelegramInlineKeyboardMarkup } from "gramio";
 import type { ViewRender } from "./render.ts";
 import type { ResponseView } from "./response.ts";
 import type { ViewBuilder } from "./view.ts";
@@ -28,4 +28,17 @@ export interface InitViewsBuilderReturn<Globals extends object> {
 		view: View,
 		...args: ExtractViewArgs<View>
 	) => void;
+}
+
+export function isInlineMarkup(
+	markup: any,
+): markup is TelegramInlineKeyboardMarkup {
+	if (!markup || typeof markup !== "object") {
+		return false;
+	}
+	if (typeof markup.toJSON === "function") {
+		const json = markup.toJSON();
+		return "inline_keyboard" in json;
+	}
+	return "inline_keyboard" in markup;
 }
