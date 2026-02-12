@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
@@ -86,5 +86,38 @@ describe("loadJsonViewsDir", () => {
 
 		const result = await loadJsonViewsDir(testDir);
 		expect(result["my-view"]).toEqual({ text: "hi" });
+	});
+
+	test("loads subdirectories with dot-separated keys", async () => {
+		await mkdir(join(testDir, "goods", "things"), { recursive: true });
+		await writeFile(
+			join(testDir, "goods", "things", "happens.json"),
+			JSON.stringify({ text: "nested!" }),
+		);
+		await writeFile(
+			join(testDir, "goods", "list.json"),
+			JSON.stringify({ text: "goods list" }),
+		);
+		await writeFile(
+			join(testDir, "top.json"),
+			JSON.stringify({ text: "top level" }),
+		);
+
+		const result = await loadJsonViewsDir(testDir);
+		expect(result["goods.things.happens"]).toEqual({ text: "nested!" });
+		expect(result["goods.list"]).toEqual({ text: "goods list" });
+		expect(result["top"]).toEqual({ text: "top level" });
+	});
+
+	test("ignores non-json files in subdirectories", async () => {
+		await mkdir(join(testDir, "sub"), { recursive: true });
+		await writeFile(
+			join(testDir, "sub", "view.json"),
+			JSON.stringify({ text: "ok" }),
+		);
+		await writeFile(join(testDir, "sub", "notes.txt"), "ignore me");
+
+		const result = await loadJsonViewsDir(testDir);
+		expect(Object.keys(result)).toEqual(["sub.view"]);
 	});
 });
