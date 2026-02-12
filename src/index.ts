@@ -99,4 +99,9 @@ export type {
 	ViewAdapter,
 	ViewMap,
 } from "./adapters/index.ts";
-export { createJsonAdapter, defineAdapter } from "./adapters/index.ts";
+export {
+	createJsonAdapter,
+	defineAdapter,
+	loadJsonViews,
+	loadJsonViewsDir,
+} from "./adapters/index.ts";
