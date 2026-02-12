@@ -4,6 +4,7 @@ import type {
 	ContextType,
 	TelegramInlineKeyboardMarkup,
 } from "gramio";
+import type { ViewAdapter, ViewMap } from "./adapters/types.ts";
 import type { ViewRender } from "./render.ts";
 import type { ResponseView } from "./response.ts";
 import type { ViewBuilder } from "./view.ts";
@@ -25,6 +26,10 @@ export type RenderFunction = <
 
 export interface InitViewsBuilderReturn<Globals extends object> {
 	(): ViewBuilder<Globals>;
+
+	from: <M extends ViewMap>(
+		adapter: ViewAdapter<Globals, M>,
+	) => InitViewsBuilderWithAdapterReturn<Globals, M>;
 
 	buildRender: (
 		context: Context<BotLike>,
@@ -48,6 +53,53 @@ export interface InitViewsBuilderReturn<Globals extends object> {
 		>;
 	};
 }
+
+export interface InitViewsBuilderWithAdapterReturn<
+	Globals extends object,
+	M extends ViewMap,
+> {
+	(): ViewBuilder<Globals>;
+
+	adapter: ViewAdapter<Globals, M>;
+
+	buildRender: (
+		context: Context<BotLike>,
+		globals: Globals,
+	) => AdapterRenderFunction<Globals, M>;
+}
+
+export type AdapterRenderFunction<Globals extends object, M extends ViewMap> = {
+	<View extends ViewRender<any, any>>(
+		view: View,
+		...args: ExtractViewArgs<View>
+	): Promise<void>;
+	<K extends keyof M & string>(
+		key: K,
+		...args: M[K] extends void ? [] : [M[K]]
+	): Promise<void>;
+
+	send: {
+		<View extends ViewRender<any, any>>(
+			view: View,
+			...args: ExtractViewArgs<View>
+		): Promise<ContextType<BotLike, "message">>;
+		<K extends keyof M & string>(
+			key: K,
+			...args: M[K] extends void ? [] : [M[K]]
+		): Promise<ContextType<BotLike, "message">>;
+	};
+
+	edit: {
+		<View extends ViewRender<any, any>>(
+			view: View,
+			...args: ExtractViewArgs<View>
+		): Promise<ReturnType<ContextType<BotLike, "callback_query">["editText"]>>;
+		<K extends keyof M & string>(
+			key: K,
+			...args: M[K] extends void ? [] : [M[K]]
+		): Promise<ReturnType<ContextType<BotLike, "callback_query">["editText"]>>;
+	};
+};
 
 export function isInlineMarkup(
 	markup: unknown,

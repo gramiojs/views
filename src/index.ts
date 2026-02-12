@@ -1,4 +1,8 @@
-import type { InitViewsBuilderReturn } from "./utils.ts";
+import type { ViewAdapter, ViewMap } from "./adapters/types.ts";
+import type {
+	InitViewsBuilderReturn,
+	InitViewsBuilderWithAdapterReturn,
+} from "./utils.ts";
 import { ViewBuilder } from "./view.ts";
 
 export function initViewsBuilder<
@@ -35,5 +39,64 @@ export function initViewsBuilder<
 		return render;
 	};
 
+	returnResult.from = <M extends ViewMap>(
+		adapter: ViewAdapter<Globals, M>,
+	): InitViewsBuilderWithAdapterReturn<Globals, M> => {
+		const result: InitViewsBuilderWithAdapterReturn<Globals, M> = (() => {
+			return new ViewBuilder<Globals>();
+		}) as InitViewsBuilderWithAdapterReturn<Globals, M>;
+
+		result.adapter = adapter;
+
+		result.buildRender = (context, globals) => {
+			const ctx = context as any;
+
+			const render = (viewOrKey: any, ...args: any[]) => {
+				if (typeof viewOrKey === "string") {
+					const viewRender = adapter.resolve(viewOrKey);
+					return viewRender.renderWithContext(ctx, globals, args as any);
+				}
+				return viewOrKey.renderWithContext(ctx, globals, args);
+			};
+
+			render.send = (viewOrKey: any, ...args: any[]) => {
+				if (typeof viewOrKey === "string") {
+					const viewRender = adapter.resolve(viewOrKey);
+					return viewRender.renderWithContext(
+						ctx,
+						globals,
+						args as any,
+						"send",
+					);
+				}
+				return viewOrKey.renderWithContext(ctx, globals, args, "send");
+			};
+
+			render.edit = (viewOrKey: any, ...args: any[]) => {
+				if (typeof viewOrKey === "string") {
+					const viewRender = adapter.resolve(viewOrKey);
+					return viewRender.renderWithContext(
+						ctx,
+						globals,
+						args as any,
+						"edit",
+					);
+				}
+				return viewOrKey.renderWithContext(ctx, globals, args, "edit");
+			};
+
+			return render as any;
+		};
+
+		return result;
+	};
+
 	return returnResult;
 }
+
+export type {
+	JsonViewDefinition,
+	ViewAdapter,
+	ViewMap,
+} from "./adapters/index.ts";
+export { createJsonAdapter, defineAdapter } from "./adapters/index.ts";
