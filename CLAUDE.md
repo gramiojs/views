@@ -13,17 +13,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Lint/Format:** `bunx @biomejs/biome check .` / `bunx @biomejs/biome format .`
 - **Run example bot:** `bun test.ts` or `bun example/index.ts` (requires `BOT_TOKEN` in `.env`)
 
-There are no automated tests currently (the `tests/` directory is empty and test step is commented out in CI).
+- **Test:** `bun test`
 
 ## Architecture
 
-The library has a small, focused design with 4 core modules in `src/`:
+The library has a small, focused design with core modules in `src/`:
 
 - **`index.ts`** — `initViewsBuilder<Globals>()` factory. Returns a callable that creates `ViewBuilder` instances, plus a `.buildRender(context, globals)` method that produces `render`/`render.send`/`render.edit` functions for use inside GramIO's `.derive()`.
 - **`view.ts`** — `ViewBuilder` class. Has a single `.render(callback)` method that takes a `this`-typed callback (accessing globals + `response`) and returns a `ViewRender`.
 - **`render.ts`** — `ViewRender` class. Core rendering engine. `renderWithContext()` executes the view callback, then decides whether to send or edit based on the Telegram context type. Handles text-only, single media, and media group messages with proper edit-to-send fallbacks.
 - **`response.ts`** — `ResponseView` class. Fluent builder (`.text()`, `.keyboard()`, `.media()`) that collects the response payload.
 - **`utils.ts`** — Type utilities (`WithResponseContext`, `ExtractViewArgs`, `InitViewsBuilderReturn`) and the `isInlineMarkup` runtime check.
+- **`adapters/`** — Adapter system for external view definitions:
+  - **`types.ts`** — `ViewAdapter` / `ViewMap` interfaces.
+  - **`define.ts`** — `defineAdapter()` — creates an adapter from programmatic view callbacks.
+  - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation.
+  - **`fs.ts`** — FS loading helpers:
+    - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions.
+    - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory; subdirectory paths become dot-separated keys (e.g. `goods/things/happens.json` → `"goods.things.happens"`).
+  - **`index.ts`** — Re-exports all adapter utilities.
 
 ### Key Pattern
 
