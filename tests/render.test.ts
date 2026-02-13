@@ -1,3 +1,4 @@
+import type { Context } from "gramio";
 import { describe, expect, mock, test } from "bun:test";
 import { ViewRender } from "../src/render.ts";
 import type { ResponseView } from "../src/response.ts";
@@ -9,7 +10,7 @@ function createMessageContext() {
 		send: mock(() => Promise.resolve()),
 		sendMedia: mock(() => Promise.resolve()),
 		sendMediaGroup: mock(() => Promise.resolve()),
-	} as any;
+	} as any; // Mock context - only minimal fields needed for testing
 }
 
 function createCallbackQueryContext(overrides?: Record<string, unknown>) {
@@ -28,7 +29,7 @@ function createCallbackQueryContext(overrides?: Record<string, unknown>) {
 		sendMedia: mock(() => Promise.resolve()),
 		sendMediaGroup: mock(() => Promise.resolve()),
 		...overrides,
-	} as any;
+	} as any; // Mock context - only minimal fields needed for testing
 }
 
 describe("ViewRender", () => {
@@ -273,7 +274,7 @@ describe("ViewRender", () => {
 				return this.response.text(this.greeting);
 			});
 			const ctx = createMessageContext();
-			await view.renderWithContext(ctx, { greeting: "Hola" } as any, []);
+			await view.renderWithContext(ctx, { greeting: "Hola" }, []);
 
 			expect(ctx.send).toHaveBeenCalledWith("Hola", {
 				reply_markup: undefined,

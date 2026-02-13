@@ -53,6 +53,26 @@ The `this` context is typed as `Globals & { response: ResponseView }`.
 - Published to both npm (via pkgroll) and JSR (via deno.json)
 - Please update README.md with new changes
 
+## Testing & Types
+
+**Type safety in tests is critical** — tests serve as both documentation and verification of API contracts. Avoid `any` wherever possible:
+
+✅ **Always type:**
+- Globals: `type Globals = { locale: string }` instead of `{}`
+- ViewMap: `type ViewMap = { welcome: void; greet: { name: string } }` instead of `any`
+- Params: `[{ name: "Alice" }]` instead of `[...] as any`
+
+⚠️ **Acceptable `any` usage (comment required):**
+- **Mock contexts** — partial Telegram context implementations for testing
+  ```ts
+  } as any; // Mock context - only minimal fields needed for testing
+  ```
+- **Private field access** — unit tests checking internal state
+  ```ts
+  (res as any).response // Testing private ResponseView.response field
+  ```
+- **Complex generic scenarios** — where inference would require excessive type annotations, use `as any` with a comment explaining why
+
 ## Publishing
 
 Dual-publish to npm and JSR via `.github/workflows/publish.yml` (manual dispatch). The `scripts/prepare-jsr.ts` script syncs the version to `deno.json` before JSR publish.

@@ -21,9 +21,9 @@ describe("defineAdapter", () => {
 			},
 		});
 
-		expect(() => (adapter as any).resolve("nonexistent")).toThrow(
-			'View "nonexistent" not found in adapter',
-		);
+		expect(() =>
+			(adapter as { resolve: (key: string) => void }).resolve("nonexistent"),
+		).toThrow('View "nonexistent" not found in adapter');
 	});
 
 	test("keys() returns all defined view keys", () => {

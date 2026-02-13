@@ -1,3 +1,4 @@
+import type { Context } from "gramio";
 import { describe, expect, mock, test } from "bun:test";
 import { createJsonAdapter } from "../src/adapters/json.ts";
 import { initViewsBuilder } from "../src/index.ts";
@@ -10,7 +11,7 @@ function createMessageContext() {
 		send: mock(() => Promise.resolve()),
 		sendMedia: mock(() => Promise.resolve()),
 		sendMediaGroup: mock(() => Promise.resolve()),
-	} as any;
+	} as any; // Mock context - only minimal fields needed for testing
 }
 
 function createCallbackQueryContext() {
@@ -28,7 +29,7 @@ function createCallbackQueryContext() {
 		editReplyMarkup: mock(() => Promise.resolve()),
 		sendMedia: mock(() => Promise.resolve()),
 		sendMediaGroup: mock(() => Promise.resolve()),
-	} as any;
+	} as any; // Mock context - only minimal fields needed for testing
 }
 
 describe("initViewsBuilder", () => {
@@ -107,9 +108,11 @@ describe("initViewsBuilder", () => {
 });
 
 describe("initViewsBuilder.from() with adapter", () => {
+	type ViewMap = { welcome: void };
+
 	test("returns builder with adapter attached", () => {
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({
+		const adapter = createJsonAdapter<{}, ViewMap>({
 			views: { welcome: { text: "Hello!" } },
 		});
 		const result = defineView.from(adapter);
@@ -120,7 +123,7 @@ describe("initViewsBuilder.from() with adapter", () => {
 
 	test("calling from() result returns ViewBuilder", () => {
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({
+		const adapter = createJsonAdapter<{}, ViewMap>({
 			views: { welcome: { text: "Hello!" } },
 		});
 		const withAdapter = defineView.from(adapter);
@@ -130,14 +133,14 @@ describe("initViewsBuilder.from() with adapter", () => {
 
 	test("buildRender dispatches string keys to adapter", async () => {
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({
+		const adapter = createJsonAdapter<{}, ViewMap>({
 			views: { welcome: { text: "Hello from adapter!" } },
 		});
 		const withAdapter = defineView.from(adapter);
 		const ctx = createMessageContext();
 		const render = withAdapter.buildRender(ctx, {});
 
-		await render("welcome" as any);
+		await render("welcome");
 		expect(ctx.send).toHaveBeenCalledWith("Hello from adapter!", {
 			reply_markup: undefined,
 		});
@@ -145,7 +148,7 @@ describe("initViewsBuilder.from() with adapter", () => {
 
 	test("buildRender dispatches ViewRender objects directly", async () => {
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({
+		const adapter = createJsonAdapter<{}, ViewMap>({
 			views: { welcome: { text: "Hello!" } },
 		});
 		const withAdapter = defineView.from(adapter);
@@ -162,30 +165,32 @@ describe("initViewsBuilder.from() with adapter", () => {
 	});
 
 	test("render.send with string key forces send", async () => {
+		type ViewMap = { msg: void };
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({
+		const adapter = createJsonAdapter<{}, ViewMap>({
 			views: { msg: { text: "adapter send" } },
 		});
 		const withAdapter = defineView.from(adapter);
 		const ctx = createCallbackQueryContext();
 		const render = withAdapter.buildRender(ctx, {});
 
-		await render.send("msg" as any);
+		await render.send("msg");
 		expect(ctx.send).toHaveBeenCalledWith("adapter send", {
 			reply_markup: undefined,
 		});
 	});
 
 	test("render.edit with string key forces edit", async () => {
+		type ViewMap = { msg: void };
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({
+		const adapter = createJsonAdapter<{}, ViewMap>({
 			views: { msg: { text: "adapter edit" } },
 		});
 		const withAdapter = defineView.from(adapter);
 		const ctx = createCallbackQueryContext();
 		const render = withAdapter.buildRender(ctx, {});
 
-		await render.edit("msg" as any);
+		await render.edit("msg");
 		expect(ctx.editText).toHaveBeenCalledWith("adapter edit", {
 			reply_markup: undefined,
 		});
@@ -193,7 +198,7 @@ describe("initViewsBuilder.from() with adapter", () => {
 
 	test("render.send with ViewRender forces send", async () => {
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({ views: {} });
+		const adapter = createJsonAdapter<{}, {}>({ views: {} });
 		const withAdapter = defineView.from(adapter);
 		const view = withAdapter().render(function () {
 			return this.response.text("view send");
@@ -209,7 +214,7 @@ describe("initViewsBuilder.from() with adapter", () => {
 
 	test("render.edit with ViewRender forces edit", async () => {
 		const defineView = initViewsBuilder<{}>();
-		const adapter = createJsonAdapter({ views: {} });
+		const adapter = createJsonAdapter<{}, {}>({ views: {} });
 		const withAdapter = defineView.from(adapter);
 		const view = withAdapter().render(function () {
 			return this.response.text("view edit");
@@ -227,8 +232,9 @@ describe("initViewsBuilder.from() with adapter", () => {
 describe("initViewsBuilder.from() with adapter factory", () => {
 	test("accepts a factory function", () => {
 		type Globals = { locale: string };
+		type ViewMap = { welcome: void };
 		const defineView = initViewsBuilder<Globals>();
-		const adapter = createJsonAdapter<Globals, any>({
+		const adapter = createJsonAdapter<Globals, ViewMap>({
 			views: { welcome: { text: "Hello!" } },
 		});
 		const factory = (globals: Globals) => adapter;
@@ -240,30 +246,31 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 
 	test("factory selects adapter based on globals", async () => {
 		type Globals = { locale: string };
+		type ViewMap = { greet: void };
 		const defineView = initViewsBuilder<Globals>();
 
-		const adapters = {
-			en: createJsonAdapter<Globals, any>({
+		const adapters: Record<string, ReturnType<typeof createJsonAdapter<Globals, ViewMap>>> = {
+			en: createJsonAdapter<Globals, ViewMap>({
 				views: { greet: { text: "Hello!" } },
 			}),
-			ru: createJsonAdapter<Globals, any>({
+			ru: createJsonAdapter<Globals, ViewMap>({
 				views: { greet: { text: "Привет!" } },
 			}),
-		} as Record<string, ReturnType<typeof createJsonAdapter<Globals, any>>>;
+		};
 		const withAdapter = defineView.from(
 			(globals: Globals) => adapters[globals.locale],
 		);
 
 		const ctxEn = createMessageContext();
 		const renderEn = withAdapter.buildRender(ctxEn, { locale: "en" });
-		await renderEn("greet" as any);
+		await renderEn("greet");
 		expect(ctxEn.send).toHaveBeenCalledWith("Hello!", {
 			reply_markup: undefined,
 		});
 
 		const ctxRu = createMessageContext();
-		const renderRu = withAdapter.buildRender(ctxRu, { locale: "ru" } as any);
-		await renderRu("greet" as any);
+		const renderRu = withAdapter.buildRender(ctxRu, { locale: "ru" });
+		await renderRu("greet");
 		expect(ctxRu.send).toHaveBeenCalledWith("Привет!", {
 			reply_markup: undefined,
 		});
@@ -271,16 +278,17 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 
 	test("factory works with render.send and render.edit", async () => {
 		type Globals = { locale: string };
+		type ViewMap = { msg: void };
 		const defineView = initViewsBuilder<Globals>();
 
-		const adapters = {
-			en: createJsonAdapter<Globals, any>({
+		const adapters: Record<string, ReturnType<typeof createJsonAdapter<Globals, ViewMap>>> = {
+			en: createJsonAdapter<Globals, ViewMap>({
 				views: { msg: { text: "English" } },
 			}),
-			ru: createJsonAdapter<Globals, any>({
+			ru: createJsonAdapter<Globals, ViewMap>({
 				views: { msg: { text: "Русский" } },
 			}),
-		} as Record<string, ReturnType<typeof createJsonAdapter<Globals, any>>>;
+		};
 		const withAdapter = defineView.from(
 			(globals: Globals) => adapters[globals.locale],
 		);
@@ -288,8 +296,8 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		const ctxSend = createCallbackQueryContext();
 		const renderSend = withAdapter.buildRender(ctxSend, {
 			locale: "ru",
-		} as any);
-		await renderSend.send("msg" as any);
+		});
+		await renderSend.send("msg");
 		expect(ctxSend.send).toHaveBeenCalledWith("Русский", {
 			reply_markup: undefined,
 		});
@@ -297,8 +305,8 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		const ctxEdit = createCallbackQueryContext();
 		const renderEdit = withAdapter.buildRender(ctxEdit, {
 			locale: "en",
-		} as any);
-		await renderEdit.edit("msg" as any);
+		});
+		await renderEdit.edit("msg");
 		expect(ctxEdit.editText).toHaveBeenCalledWith("English", {
 			reply_markup: undefined,
 		});
@@ -306,9 +314,10 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 
 	test("factory still allows ViewRender objects alongside string keys", async () => {
 		type Globals = { locale: string };
+		type ViewMap = { json: void };
 		const defineView = initViewsBuilder<Globals>();
 
-		const adapter = createJsonAdapter<Globals, any>({
+		const adapter = createJsonAdapter<Globals, ViewMap>({
 			views: { json: { text: "from adapter" } },
 		});
 		const withAdapter = defineView.from(
@@ -320,7 +329,7 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		});
 
 		const ctx = createMessageContext();
-		const render = withAdapter.buildRender(ctx, { locale: "en" } as any);
+		const render = withAdapter.buildRender(ctx, { locale: "en" });
 
 		await render(customView);
 		expect(ctx.send).toHaveBeenCalledWith("from code", {
@@ -337,7 +346,7 @@ describe("globals flow", () => {
 			return this.response.text(`Locale: ${this.locale}`);
 		});
 		const ctx = createMessageContext();
-		const render = defineView.buildRender(ctx, { locale: "en" } as any);
+		const render = defineView.buildRender(ctx, { locale: "en" });
 
 		await render(view);
 		expect(ctx.send).toHaveBeenCalledWith("Locale: en", {
