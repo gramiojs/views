@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import type { JsonViewDefinition } from "../src/adapters/json.ts";
 import { loadJsonViews, loadJsonViewsDir } from "../src/adapters/fs.ts";
 
 let testDir: string;
@@ -36,6 +37,33 @@ describe("loadJsonViews", () => {
 		const filePath = join(testDir, "bad.json");
 		await writeFile(filePath, "not json {{{");
 		expect(loadJsonViews(filePath)).rejects.toThrow();
+	});
+
+	test("loads views with keyboard and media fields", async () => {
+		const views: Record<string, JsonViewDefinition> = {
+			full: {
+				text: "Hello, {{name}}!",
+				keyboard: [
+					[
+						{ text: "Profile {{name}}", callback_data: "profile_{{id}}" },
+						{ text: "Visit", url: "https://example.com/{{id}}" },
+					],
+				],
+				media: { type: "photo", media: "{{photoUrl}}" },
+			},
+			gallery: {
+				text: "Photos",
+				media: [
+					{ type: "photo", media: "https://example.com/1.jpg" },
+					{ type: "photo", media: "https://example.com/2.jpg" },
+				],
+			},
+		};
+		const filePath = join(testDir, "views.json");
+		await writeFile(filePath, JSON.stringify(views));
+
+		const result = await loadJsonViews(filePath);
+		expect(result).toEqual(views);
 	});
 });
 

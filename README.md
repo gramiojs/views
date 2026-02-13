@@ -78,6 +78,47 @@ const defineView = initViewsBuilder<Data>().from(adapter);
 context.render("welcome", { name: "Alice" });
 ```
 
+### Keyboards and media
+
+JSON views support inline keyboards (with `{{key}}` interpolation in button text, callback_data, and url) and media (single or group):
+
+```json
+{
+    "welcome": {
+        "text": "Hello, {{name}}!",
+        "keyboard": [
+            [
+                { "text": "Profile {{name}}", "callback_data": "profile_{{id}}" },
+                { "text": "Help", "callback_data": "help" }
+            ],
+            [
+                { "text": "Visit", "url": "https://example.com/{{id}}" }
+            ]
+        ],
+        "media": {
+            "type": "photo",
+            "media": "{{photoUrl}}"
+        }
+    }
+}
+```
+
+Media groups use an array:
+
+```json
+{
+    "gallery": {
+        "text": "My photos",
+        "media": [
+            { "type": "photo", "media": "{{photo1}}" },
+            { "type": "photo", "media": "{{photo2}}" }
+        ]
+    }
+}
+```
+
+The `keyboard` field maps to `{ inline_keyboard: [...] }` automatically. Supported media types: `photo`, `video`, `animation`, `audio`, `document`.
+
 ### Loading JSON views from the filesystem
 
 **Single file** — one JSON file with multiple views:

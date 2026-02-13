@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`@gramio/views` is a view-layer library for [GramIO](https://github.com/gramiojs/gramio) Telegram bots. It provides a builder pattern for defining reusable "views" — composable message templates with text, keyboards, and media — that automatically handle send vs. edit strategies based on the Telegram context (message vs. callback_query).
+`@gramio/views` is a view-layer library for [GramIO](https://github.com/gramiojs/gramio) Telegram bots. It provides a builder pattern for defining reusable "views" — composable message templates with text, keyboards, and media — that automatically handle send vs. edit strategies based on the Telegram context (message vs. callback_query). @README.md
 
 ## Commands
 
@@ -25,22 +25,24 @@ The library has a small, focused design with core modules in `src/`:
 - **`response.ts`** — `ResponseView` class. Fluent builder (`.text()`, `.keyboard()`, `.media()`) that collects the response payload.
 - **`utils.ts`** — Type utilities (`WithResponseContext`, `ExtractViewArgs`, `InitViewsBuilderReturn`) and the `isInlineMarkup` runtime check.
 - **`adapters/`** — Adapter system for external view definitions:
-  - **`types.ts`** — `ViewAdapter` / `ViewMap` interfaces.
-  - **`define.ts`** — `defineAdapter()` — creates an adapter from programmatic view callbacks.
-  - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation.
-  - **`fs.ts`** — FS loading helpers:
-    - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions.
-    - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory; subdirectory paths become dot-separated keys (e.g. `goods/things/happens.json` → `"goods.things.happens"`).
-  - **`index.ts`** — Re-exports all adapter utilities.
+    - **`types.ts`** — `ViewAdapter` / `ViewMap` interfaces.
+    - **`define.ts`** — `defineAdapter()` — creates an adapter from programmatic view callbacks.
+    - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation. Supports `text`, `keyboard` (inline keyboard rows with button text/callback_data/url interpolation), and `media` (single or array for media groups, with media URL interpolation).
+    - **`fs.ts`** — FS loading helpers:
+        - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions.
+        - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory; subdirectory paths become dot-separated keys (e.g. `goods/things/happens.json` → `"goods.things.happens"`).
+    - **`index.ts`** — Re-exports all adapter utilities.
 
 ### Key Pattern
 
 Views use `this`-binding to inject globals and the response builder into the render callback:
+
 ```ts
 const view = defineView().render(function (arg: string) {
     return this.response.text(this.someGlobal + arg);
 });
 ```
+
 The `this` context is typed as `Globals & { response: ResponseView }`.
 
 ## Code Style
@@ -49,6 +51,7 @@ The `this` context is typed as `Globals & { response: ResponseView }`.
 - ESM (`"type": "module"`) with `.ts` extensions in imports
 - Strict TypeScript, `verbatimModuleSyntax` enabled
 - Published to both npm (via pkgroll) and JSR (via deno.json)
+- Please update README.md with new changes
 
 ## Publishing
 
