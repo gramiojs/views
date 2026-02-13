@@ -39,16 +39,18 @@ describe("loadJsonViews", () => {
 		expect(loadJsonViews(filePath)).rejects.toThrow();
 	});
 
-	test("loads views with keyboard and media fields", async () => {
+	test("loads views with reply_markup and media fields", async () => {
 		const views: Record<string, JsonViewDefinition> = {
 			full: {
 				text: "Hello, {{name}}!",
-				keyboard: [
-					[
-						{ text: "Profile {{name}}", callback_data: "profile_{{id}}" },
-						{ text: "Visit", url: "https://example.com/{{id}}" },
+				reply_markup: {
+					inline_keyboard: [
+						[
+							{ text: "Profile {{name}}", callback_data: "profile_{{id}}" },
+							{ text: "Visit", url: "https://example.com/{{id}}" },
+						],
 					],
-				],
+				},
 				media: { type: "photo", media: "{{photoUrl}}" },
 			},
 			gallery: {

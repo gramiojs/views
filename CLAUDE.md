@@ -27,7 +27,7 @@ The library has a small, focused design with core modules in `src/`:
 - **`adapters/`** — Adapter system for external view definitions:
     - **`types.ts`** — `ViewAdapter` / `ViewMap` interfaces.
     - **`define.ts`** — `defineAdapter()` — creates an adapter from programmatic view callbacks.
-    - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation. Supports `text`, `keyboard` (inline keyboard rows with button text/callback_data/url interpolation), `reply_keyboard` (reply keyboard with resize/one_time/persistent/placeholder/selective options and button text/request_contact/request_location), and `media` (single or array for media groups, with media URL interpolation). A view cannot have both `keyboard` and `reply_keyboard`.
+    - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation. Supports `text`, `reply_markup` (mirrors Telegram Bot API: `{ inline_keyboard }`, `{ keyboard, resize_keyboard, ... }`, `{ remove_keyboard }`, `{ force_reply }` — with interpolation in button text/callback_data/url/input_field_placeholder), and `media` (single or array for media groups, with media URL interpolation).
     - **`fs.ts`** — FS loading helpers:
         - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions.
         - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory; subdirectory paths become dot-separated keys (e.g. `goods/things/happens.json` → `"goods.things.happens"`).

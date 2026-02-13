@@ -105,17 +105,19 @@ describe("createJsonAdapter", () => {
 		expect(ctx.sendMediaGroup).not.toHaveBeenCalled();
 	});
 
-	test("renders keyboard as inline_keyboard", async () => {
+	test("renders inline_keyboard via reply_markup", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				menu: {
 					text: "Choose:",
-					keyboard: [
-						[
-							{ text: "Option A", callback_data: "a" },
-							{ text: "Option B", callback_data: "b" },
+					reply_markup: {
+						inline_keyboard: [
+							[
+								{ text: "Option A", callback_data: "a" },
+								{ text: "Option B", callback_data: "b" },
+							],
 						],
-					],
+					},
 				},
 			},
 		});
@@ -136,14 +138,21 @@ describe("createJsonAdapter", () => {
 		});
 	});
 
-	test("interpolates keyboard button text and callback_data", async () => {
+	test("interpolates inline keyboard button text and callback_data", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				profile: {
 					text: "Hi",
-					keyboard: [
-						[{ text: "Profile {{name}}", callback_data: "profile_{{id}}" }],
-					],
+					reply_markup: {
+						inline_keyboard: [
+							[
+								{
+									text: "Profile {{name}}",
+									callback_data: "profile_{{id}}",
+								},
+							],
+						],
+					},
 				},
 			},
 		});
@@ -163,14 +172,16 @@ describe("createJsonAdapter", () => {
 		});
 	});
 
-	test("interpolates keyboard button url", async () => {
+	test("interpolates inline keyboard button url", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				link: {
 					text: "Visit",
-					keyboard: [
-						[{ text: "Go", url: "https://example.com/{{id}}" }],
-					],
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: "Go", url: "https://example.com/{{id}}" }],
+						],
+					},
 				},
 			},
 		});
@@ -186,12 +197,14 @@ describe("createJsonAdapter", () => {
 		});
 	});
 
-	test("keyboard without params passes through as-is", async () => {
+	test("inline keyboard without params passes through as-is", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				static: {
 					text: "Menu",
-					keyboard: [[{ text: "Help", callback_data: "help" }]],
+					reply_markup: {
+						inline_keyboard: [[{ text: "Help", callback_data: "help" }]],
+					},
 				},
 			},
 		});
@@ -279,12 +292,16 @@ describe("createJsonAdapter", () => {
 		]);
 	});
 
-	test("combined text + keyboard + media", async () => {
+	test("combined text + inline keyboard + media", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				full: {
 					text: "Hello {{name}}",
-					keyboard: [[{ text: "Click", callback_data: "click_{{id}}" }]],
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: "Click", callback_data: "click_{{id}}" }],
+						],
+					},
 					media: { type: "photo", media: "{{url}}" },
 				},
 			},
@@ -306,11 +323,13 @@ describe("createJsonAdapter", () => {
 		});
 	});
 
-	test("view with only keyboard (no text, no media)", async () => {
+	test("view with only reply_markup (no text, no media)", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				buttons: {
-					keyboard: [[{ text: "Go", callback_data: "go" }]],
+					reply_markup: {
+						inline_keyboard: [[{ text: "Go", callback_data: "go" }]],
+					},
 				},
 			},
 		});
@@ -325,12 +344,14 @@ describe("createJsonAdapter", () => {
 		expect(ctx.sendMediaGroup).not.toHaveBeenCalled();
 	});
 
-	test("renders reply_keyboard as TelegramReplyKeyboardMarkup", async () => {
+	test("renders reply keyboard via reply_markup", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				menu: {
 					text: "Pick one:",
-					reply_keyboard: [[{ text: "Option A" }, { text: "Option B" }]],
+					reply_markup: {
+						keyboard: [[{ text: "Option A" }, { text: "Option B" }]],
+					},
 				},
 			},
 		});
@@ -342,26 +363,23 @@ describe("createJsonAdapter", () => {
 		expect(ctx.send).toHaveBeenCalledWith("Pick one:", {
 			reply_markup: {
 				keyboard: [[{ text: "Option A" }, { text: "Option B" }]],
-				resize_keyboard: undefined,
-				one_time_keyboard: undefined,
-				is_persistent: undefined,
-				input_field_placeholder: undefined,
-				selective: undefined,
 			},
 		});
 	});
 
-	test("renders reply_keyboard with all options", async () => {
+	test("renders reply keyboard with all options", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				menu: {
 					text: "Pick:",
-					reply_keyboard: [[{ text: "Go" }]],
-					resize_keyboard: true,
-					one_time_keyboard: true,
-					is_persistent: true,
-					input_field_placeholder: "Choose...",
-					selective: true,
+					reply_markup: {
+						keyboard: [[{ text: "Go" }]],
+						resize_keyboard: true,
+						one_time_keyboard: true,
+						is_persistent: true,
+						input_field_placeholder: "Choose...",
+						selective: true,
+					},
 				},
 			},
 		});
@@ -387,7 +405,9 @@ describe("createJsonAdapter", () => {
 			views: {
 				greet: {
 					text: "Hi",
-					reply_keyboard: [[{ text: "Hello {{name}}" }]],
+					reply_markup: {
+						keyboard: [[{ text: "Hello {{name}}" }]],
+					},
 				},
 			},
 		});
@@ -399,11 +419,6 @@ describe("createJsonAdapter", () => {
 		expect(ctx.send).toHaveBeenCalledWith("Hi", {
 			reply_markup: {
 				keyboard: [[{ text: "Hello Alice" }]],
-				resize_keyboard: undefined,
-				one_time_keyboard: undefined,
-				is_persistent: undefined,
-				input_field_placeholder: undefined,
-				selective: undefined,
 			},
 		});
 	});
@@ -413,8 +428,10 @@ describe("createJsonAdapter", () => {
 			views: {
 				search: {
 					text: "Search",
-					reply_keyboard: [[{ text: "Go" }]],
-					input_field_placeholder: "Search for {{thing}}...",
+					reply_markup: {
+						keyboard: [[{ text: "Go" }]],
+						input_field_placeholder: "Search for {{thing}}...",
+					},
 				},
 			},
 		});
@@ -428,11 +445,7 @@ describe("createJsonAdapter", () => {
 		expect(ctx.send).toHaveBeenCalledWith("Search", {
 			reply_markup: {
 				keyboard: [[{ text: "Go" }]],
-				resize_keyboard: undefined,
-				one_time_keyboard: undefined,
-				is_persistent: undefined,
 				input_field_placeholder: "Search for products...",
-				selective: undefined,
 			},
 		});
 	});
@@ -442,12 +455,14 @@ describe("createJsonAdapter", () => {
 			views: {
 				contact: {
 					text: "Share info",
-					reply_keyboard: [
-						[
-							{ text: "Share Contact", request_contact: true },
-							{ text: "Share Location", request_location: true },
+					reply_markup: {
+						keyboard: [
+							[
+								{ text: "Share Contact", request_contact: true },
+								{ text: "Share Location", request_location: true },
+							],
 						],
-					],
+					},
 				},
 			},
 		});
@@ -464,37 +479,18 @@ describe("createJsonAdapter", () => {
 						{ text: "Share Location", request_location: true },
 					],
 				],
-				resize_keyboard: undefined,
-				one_time_keyboard: undefined,
-				is_persistent: undefined,
-				input_field_placeholder: undefined,
-				selective: undefined,
 			},
 		});
 	});
 
-	test("throws if both keyboard and reply_keyboard are set", () => {
-		expect(() =>
-			createJsonAdapter({
-				views: {
-					bad: {
-						text: "Oops",
-						keyboard: [[{ text: "A", callback_data: "a" }]],
-						reply_keyboard: [[{ text: "B" }]],
-					},
-				},
-			}),
-		).toThrow('View "bad" cannot have both "keyboard" and "reply_keyboard"');
-	});
-
-	test("reply_keyboard without params passes through as-is", async () => {
+	test("reply keyboard without params passes through as-is", async () => {
 		const adapter = createJsonAdapter({
 			views: {
 				static: {
 					text: "Menu",
-					reply_keyboard: [
-						[{ text: "Help" }, { text: "Settings" }],
-					],
+					reply_markup: {
+						keyboard: [[{ text: "Help" }, { text: "Settings" }]],
+					},
 				},
 			},
 		});
@@ -506,11 +502,77 @@ describe("createJsonAdapter", () => {
 		expect(ctx.send).toHaveBeenCalledWith("Menu", {
 			reply_markup: {
 				keyboard: [[{ text: "Help" }, { text: "Settings" }]],
-				resize_keyboard: undefined,
-				one_time_keyboard: undefined,
-				is_persistent: undefined,
-				input_field_placeholder: undefined,
-				selective: undefined,
+			},
+		});
+	});
+
+	test("renders remove_keyboard via reply_markup", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				clear: {
+					text: "Keyboard removed",
+					reply_markup: { remove_keyboard: true },
+				},
+			},
+		});
+
+		const view = adapter.resolve("clear");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Keyboard removed", {
+			reply_markup: { remove_keyboard: true },
+		});
+	});
+
+	test("renders force_reply via reply_markup", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				ask: {
+					text: "What is your name?",
+					reply_markup: {
+						force_reply: true,
+						input_field_placeholder: "Enter name...",
+					},
+				},
+			},
+		});
+
+		const view = adapter.resolve("ask");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("What is your name?", {
+			reply_markup: {
+				force_reply: true,
+				input_field_placeholder: "Enter name...",
+			},
+		});
+	});
+
+	test("interpolates force_reply input_field_placeholder", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				ask: {
+					text: "Answer:",
+					reply_markup: {
+						force_reply: true,
+						input_field_placeholder: "Type {{what}}...",
+					},
+				},
+			},
+		});
+
+		const view = adapter.resolve("ask");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [
+			{ what: "your age" },
+		] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Answer:", {
+			reply_markup: {
+				force_reply: true,
+				input_field_placeholder: "Type your age...",
 			},
 		});
 	});

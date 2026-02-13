@@ -19,15 +19,22 @@ export interface JsonMediaDefinition {
 	media: string;
 }
 
+export type JsonReplyMarkup =
+	| { inline_keyboard: JsonKeyboardButton[][] }
+	| {
+			keyboard: JsonReplyKeyboardButton[][];
+			resize_keyboard?: boolean;
+			one_time_keyboard?: boolean;
+			is_persistent?: boolean;
+			input_field_placeholder?: string;
+			selective?: boolean;
+		}
+	| { remove_keyboard: true; selective?: boolean }
+	| { force_reply: true; input_field_placeholder?: string; selective?: boolean };
+
 export interface JsonViewDefinition {
 	text?: string;
-	keyboard?: JsonKeyboardButton[][];
-	reply_keyboard?: JsonReplyKeyboardButton[][];
-	resize_keyboard?: boolean;
-	one_time_keyboard?: boolean;
-	is_persistent?: boolean;
-	input_field_placeholder?: string;
-	selective?: boolean;
+	reply_markup?: JsonReplyMarkup;
 	media?: JsonMediaDefinition | JsonMediaDefinition[];
 }
 
@@ -67,6 +74,39 @@ function interpolateReplyButton(
 	return result;
 }
 
+function interpolateReplyMarkup(
+	markup: JsonReplyMarkup,
+	params: Record<string, unknown>,
+): JsonReplyMarkup {
+	if ("inline_keyboard" in markup) {
+		return {
+			inline_keyboard: markup.inline_keyboard.map((row) =>
+				row.map((btn) => interpolateButton(btn, params)),
+			),
+		};
+	}
+	if ("keyboard" in markup) {
+		return {
+			...markup,
+			keyboard: markup.keyboard.map((row) =>
+				row.map((btn) => interpolateReplyButton(btn, params)),
+			),
+			input_field_placeholder: markup.input_field_placeholder
+				? interpolate(markup.input_field_placeholder, params)
+				: markup.input_field_placeholder,
+		};
+	}
+	if ("force_reply" in markup) {
+		return {
+			...markup,
+			input_field_placeholder: markup.input_field_placeholder
+				? interpolate(markup.input_field_placeholder, params)
+				: markup.input_field_placeholder,
+		};
+	}
+	return markup;
+}
+
 function interpolateMedia(
 	media: JsonMediaDefinition,
 	params: Record<string, unknown>,
@@ -86,12 +126,6 @@ export function createJsonAdapter<
 		string,
 		JsonViewDefinition,
 	][]) {
-		if (definition.keyboard && definition.reply_keyboard) {
-			throw new Error(
-				`View "${key}" cannot have both "keyboard" and "reply_keyboard"`,
-			);
-		}
-
 		const callback = function (
 			this: WithResponseContext<Globals>,
 			params?: Record<string, unknown>,
@@ -103,32 +137,11 @@ export function createJsonAdapter<
 					: definition.text;
 				response.text(text);
 			}
-			if (definition.keyboard) {
-				const rows = params
-					? definition.keyboard.map((row) =>
-							row.map((btn) => interpolateButton(btn, params)),
-						)
-					: definition.keyboard;
-				response.keyboard({ inline_keyboard: rows });
-			}
-			if (definition.reply_keyboard) {
-				const rows = params
-					? definition.reply_keyboard.map((row) =>
-							row.map((btn) => interpolateReplyButton(btn, params)),
-						)
-					: definition.reply_keyboard;
-				response.keyboard({
-					keyboard: rows,
-					resize_keyboard: definition.resize_keyboard,
-					one_time_keyboard: definition.one_time_keyboard,
-					is_persistent: definition.is_persistent,
-					input_field_placeholder: definition.input_field_placeholder
-						? params
-							? interpolate(definition.input_field_placeholder, params)
-							: definition.input_field_placeholder
-						: undefined,
-					selective: definition.selective,
-				});
+			if (definition.reply_markup) {
+				const markup = params
+					? interpolateReplyMarkup(definition.reply_markup, params)
+					: definition.reply_markup;
+				response.keyboard(markup);
 			}
 			if (definition.media) {
 				if (Array.isArray(definition.media)) {

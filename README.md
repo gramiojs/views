@@ -78,35 +78,64 @@ const defineView = initViewsBuilder<Data>().from(adapter);
 context.render("welcome", { name: "Alice" });
 ```
 
-### Keyboards and media
+### `reply_markup`, keyboards and media
 
-JSON views support inline keyboards (with `{{key}}` interpolation in button text, callback_data, and url) and media (single or group):
+The `reply_markup` field mirrors the [Telegram Bot API](https://core.telegram.org/bots/api#replykeyboardmarkup) directly. All `{{key}}` interpolation works in button text, callback_data, url, and input_field_placeholder.
+
+**Inline keyboard:**
 
 ```json
 {
     "welcome": {
         "text": "Hello, {{name}}!",
-        "keyboard": [
-            [
-                { "text": "Profile {{name}}", "callback_data": "profile_{{id}}" },
-                { "text": "Help", "callback_data": "help" }
-            ],
-            [
-                { "text": "Visit", "url": "https://example.com/{{id}}" }
+        "reply_markup": {
+            "inline_keyboard": [
+                [
+                    { "text": "Profile {{name}}", "callback_data": "profile_{{id}}" },
+                    { "text": "Help", "callback_data": "help" }
+                ],
+                [
+                    { "text": "Visit", "url": "https://example.com/{{id}}" }
+                ]
             ]
-        ],
-        "media": {
-            "type": "photo",
-            "media": "{{photoUrl}}"
         }
     }
 }
 ```
 
-Media groups use an array:
+**Reply keyboard:**
 
 ```json
 {
+    "menu": {
+        "text": "Choose an option:",
+        "reply_markup": {
+            "keyboard": [
+                [{ "text": "Help" }, { "text": "Settings" }],
+                [{ "text": "Share Contact", "request_contact": true }]
+            ],
+            "resize_keyboard": true,
+            "one_time_keyboard": true
+        }
+    }
+}
+```
+
+**Remove keyboard / Force reply:**
+
+```json
+{ "reply_markup": { "remove_keyboard": true } }
+{ "reply_markup": { "force_reply": true, "input_field_placeholder": "Type {{what}}..." } }
+```
+
+**Media** (single or group):
+
+```json
+{
+    "photo_view": {
+        "text": "A caption",
+        "media": { "type": "photo", "media": "{{photoUrl}}" }
+    },
     "gallery": {
         "text": "My photos",
         "media": [
@@ -117,40 +146,7 @@ Media groups use an array:
 }
 ```
 
-The `keyboard` field maps to `{ inline_keyboard: [...] }` automatically. Supported media types: `photo`, `video`, `animation`, `audio`, `document`.
-
-### Reply keyboards
-
-JSON views also support reply keyboards via the `reply_keyboard` field:
-
-```json
-{
-    "menu": {
-        "text": "Choose an option:",
-        "reply_keyboard": [
-            [{ "text": "Help" }, { "text": "Settings" }],
-            [{ "text": "Share Contact", "request_contact": true }]
-        ],
-        "resize_keyboard": true,
-        "one_time_keyboard": true
-    }
-}
-```
-
-Available options:
-
-| Field                       | Type      | Description                              |
-| --------------------------- | --------- | ---------------------------------------- |
-| `reply_keyboard`            | `array[]` | Rows of reply keyboard buttons           |
-| `resize_keyboard`           | `boolean` | Shrink keyboard to fit buttons           |
-| `one_time_keyboard`         | `boolean` | Hide keyboard after a button is pressed  |
-| `is_persistent`             | `boolean` | Keep keyboard visible at all times       |
-| `input_field_placeholder`   | `string`  | Placeholder text (supports `{{key}}`)    |
-| `selective`                 | `boolean` | Show keyboard to specific users only     |
-
-Each button supports `text` (with `{{key}}` interpolation), `request_contact`, and `request_location`.
-
-> **Note:** A view cannot have both `keyboard` (inline) and `reply_keyboard` at the same time — an error is thrown if both are set. Reply keyboards are silently ignored when editing messages (Telegram API limitation).
+Supported media types: `photo`, `video`, `animation`, `audio`, `document`.
 
 ### Loading JSON views from the filesystem
 
