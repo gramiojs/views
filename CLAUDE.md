@@ -9,11 +9,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 - **Build:** `bunx pkgroll` (also runs via `bun prepublishOnly`)
-- **Type-check:** `tsc --noEmit`
+- **Type-check:** `bunx tsc --noEmit` ⚠️ **MUST pass after every change**
 - **Lint/Format:** `bunx @biomejs/biome check .` / `bunx @biomejs/biome format .`
 - **Run example bot:** `bun test.ts` or `bun example/index.ts` (requires `BOT_TOKEN` in `.env`)
-
 - **Test:** `bun test`
+
+**CRITICAL:** After ANY code change, always run:
+```bash
+bun test && bunx tsc --noEmit
+```
+Both must pass before committing. Fix ALL type errors immediately.
 
 ## Architecture
 

@@ -1,4 +1,3 @@
-import type { Context } from "gramio";
 import { describe, expect, mock, test } from "bun:test";
 import { createJsonAdapter } from "../src/adapters/json.ts";
 import { ViewRender } from "../src/render.ts";
@@ -50,7 +49,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("greet");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [{ name: "World" }]);
+		await view.renderWithContext(ctx as any, {}, [{ name: "World" }]);
 
 		expect(ctx.send).toHaveBeenCalledWith("Hello, World!", {
 			reply_markup: undefined,
@@ -66,7 +65,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("greet");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [{ name: "Bob" }]);
+		await view.renderWithContext(ctx as any, {}, [{ name: "Bob" }]);
 
 		expect(ctx.send).toHaveBeenCalledWith("Hello, Bob! Age: {{age}}", {
 			reply_markup: undefined,
@@ -82,7 +81,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("static");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Static text", {
 			reply_markup: undefined,
@@ -98,7 +97,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("empty");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		// No send methods should be called since there is no text/media
 		expect(ctx.send).not.toHaveBeenCalled();
@@ -125,7 +124,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("menu");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Choose:", {
 			reply_markup: {
@@ -160,7 +159,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("profile");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [
+		await view.renderWithContext(ctx as any, {}, [
 			{ name: "Alice", id: "42" },
 		] as any);
 
@@ -189,7 +188,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("link");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [{ id: "99" }]);
+		await view.renderWithContext(ctx as any, {}, [{ id: "99" }]);
 
 		expect(ctx.send).toHaveBeenCalledWith("Visit", {
 			reply_markup: {
@@ -212,7 +211,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("static");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Menu", {
 			reply_markup: {
@@ -233,7 +232,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("photo");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.sendMedia).toHaveBeenCalledWith({
 			type: "photo",
@@ -254,7 +253,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("photo");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [
+		await view.renderWithContext(ctx as any, {}, [
 			{ photoUrl: "https://example.com/cat.jpg" },
 		] as any);
 
@@ -281,7 +280,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("gallery");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.sendMediaGroup).toHaveBeenCalledWith([
 			{ type: "photo", media: "https://example.com/1.jpg" },
@@ -310,7 +309,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("full");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [
+		await view.renderWithContext(ctx as any, {}, [
 			{ name: "Bob", id: "7", url: "https://example.com/bob.jpg" },
 		] as any);
 
@@ -337,7 +336,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("buttons");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		// No text and no media means no send/sendMedia/sendMediaGroup
 		expect(ctx.send).not.toHaveBeenCalled();
@@ -359,7 +358,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("menu");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Pick one:", {
 			reply_markup: {
@@ -387,7 +386,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("menu");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Pick:", {
 			reply_markup: {
@@ -415,7 +414,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("greet");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [{ name: "Alice" }]);
+		await view.renderWithContext(ctx as any, {}, [{ name: "Alice" }]);
 
 		expect(ctx.send).toHaveBeenCalledWith("Hi", {
 			reply_markup: {
@@ -439,7 +438,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("search");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [
+		await view.renderWithContext(ctx as any, {}, [
 			{ thing: "products" },
 		] as any);
 
@@ -470,7 +469,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("contact");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Share info", {
 			reply_markup: {
@@ -498,7 +497,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("static");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Menu", {
 			reply_markup: {
@@ -519,7 +518,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("clear");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Keyboard removed", {
 			reply_markup: { remove_keyboard: true },
@@ -541,7 +540,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("ask");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("What is your name?", {
 			reply_markup: {
@@ -566,7 +565,7 @@ describe("createJsonAdapter", () => {
 
 		const view = adapter.resolve("ask");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [
+		await view.renderWithContext(ctx as any, {}, [
 			{ what: "your age" },
 		] as any);
 
@@ -589,7 +588,7 @@ describe("globals access via $", () => {
 
 		const view = adapter.resolve("about");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, { appName: "MyBot" }, []);
+		await view.renderWithContext(ctx as any, { appName: "MyBot" }, []);
 
 		expect(ctx.send).toHaveBeenCalledWith("Welcome to MyBot!", {
 			reply_markup: undefined,
@@ -609,7 +608,7 @@ describe("globals access via $", () => {
 		const view = adapter.resolve("profile");
 		const ctx = createMessageContext();
 		await view.renderWithContext(
-			ctx as unknown as Context,
+			ctx as any,
 			{ user: { name: "Alice", age: 25 } },
 			[],
 		);
@@ -628,7 +627,7 @@ describe("globals access via $", () => {
 
 		const view = adapter.resolve("test");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Value: {{$missing}}", {
 			reply_markup: undefined,
@@ -644,7 +643,7 @@ describe("globals access via $", () => {
 
 		const view = adapter.resolve("greet");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, { botName: "Bot" }, [
+		await view.renderWithContext(ctx as any, { botName: "Bot" }, [
 			{ name: "Bob" },
 		] as any);
 
@@ -669,7 +668,7 @@ describe("globals access via $", () => {
 
 		const view = adapter.resolve("menu");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, { prefix: "CMD" }, [
+		await view.renderWithContext(ctx as any, { prefix: "CMD" }, [
 			{ label: "Start" },
 		] as any);
 
@@ -693,7 +692,7 @@ describe("globals access via $", () => {
 
 		const view = adapter.resolve("photo");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, { cdnUrl: "https://cdn.example.com" }, [
+		await view.renderWithContext(ctx as any, { cdnUrl: "https://cdn.example.com" }, [
 			{ file: "cat.jpg" },
 		] as any);
 
@@ -714,7 +713,7 @@ describe("globals access via $", () => {
 
 		const view = adapter.resolve("info");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, { version: "1.2.3" }, []);
+		await view.renderWithContext(ctx as any, { version: "1.2.3" }, []);
 
 		expect(ctx.send).toHaveBeenCalledWith("Version: 1.2.3", {
 			reply_markup: undefined,
@@ -740,7 +739,7 @@ describe("resolve callback", () => {
 
 		const view = adapter.resolve("greet");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [{ name: "Alice" }]);
+		await view.renderWithContext(ctx as any, {}, [{ name: "Alice" }]);
 
 		expect(ctx.send).toHaveBeenCalledWith("Добро пожаловать, Alice!", {
 			reply_markup: undefined,
@@ -759,7 +758,7 @@ describe("resolve callback", () => {
 
 		const view = adapter.resolve("test");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, [{ name: "Bob" }]);
+		await view.renderWithContext(ctx as any, {}, [{ name: "Bob" }]);
 
 		expect(ctx.send).toHaveBeenCalledWith("RESOLVED and Bob", {
 			reply_markup: undefined,
@@ -783,7 +782,7 @@ describe("resolve callback", () => {
 		const ctx = createMessageContext();
 		const t = (key: string) =>
 			({ hello: "Привет", bye: "Пока" })[key] ?? key;
-		await view.renderWithContext(ctx as unknown as Context, { t }, []);
+		await view.renderWithContext(ctx as any, { t }, []);
 
 		expect(ctx.send).toHaveBeenCalledWith("Привет", {
 			reply_markup: undefined,
@@ -802,7 +801,7 @@ describe("resolve callback", () => {
 
 		const view = adapter.resolve("full");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, { brand: "GramIO" }, [
+		await view.renderWithContext(ctx as any, { brand: "GramIO" }, [
 			{ subtitle: "страница" },
 		] as any);
 
@@ -830,7 +829,7 @@ describe("resolve callback", () => {
 
 		const view = adapter.resolve("menu");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith("Menu", {
 			reply_markup: {
@@ -849,7 +848,7 @@ describe("resolve callback", () => {
 
 		const view = adapter.resolve("test");
 		const ctx = createMessageContext();
-		await view.renderWithContext(ctx as unknown as Context, {}, []);
+		await view.renderWithContext(ctx as any, {}, [] as any);
 
 		expect(ctx.send).toHaveBeenCalledWith(
 			"{{t:missing}} and {{also_missing}}",
