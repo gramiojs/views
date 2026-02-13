@@ -60,14 +60,13 @@ bot.start();
 
 ## Imports
 
-The library supports modular imports to avoid bundling unnecessary dependencies:
+The library uses modular imports to avoid bundling unnecessary dependencies:
 
 ```ts
-// Main entry - everything
-import { initViewsBuilder, createJsonAdapter, loadJsonViews } from "@gramio/views";
-
-// Or import adapters separately (recommended)
+// Main entry - core functionality
 import { initViewsBuilder } from "@gramio/views";
+
+// Import adapters separately
 import { createJsonAdapter } from "@gramio/views/json";
 import { loadJsonViews, loadJsonViewsDir } from "@gramio/views/fs";
 import { defineAdapter } from "@gramio/views/define";
@@ -223,7 +222,9 @@ views/
 ```
 
 ```ts
-import { loadJsonViewsDir, createJsonAdapter, initViewsBuilder } from "@gramio/views";
+import { initViewsBuilder } from "@gramio/views";
+import { createJsonAdapter } from "@gramio/views/json";
+import { loadJsonViewsDir } from "@gramio/views/fs";
 
 const adapters = {
     en: createJsonAdapter({ views: await loadJsonViewsDir("./views/en") }),
@@ -260,7 +261,8 @@ context.render("welcome", { name: "Alice" });
 ```
 
 ```ts
-import { loadJsonViews, createJsonAdapter } from "@gramio/views";
+import { createJsonAdapter } from "@gramio/views/json";
+import { loadJsonViews } from "@gramio/views/fs";
 
 const views = await loadJsonViews("./views.json");
 const adapter = createJsonAdapter({ views });
@@ -311,7 +313,8 @@ views/
 ```
 
 ```ts
-import { loadJsonViewsDir, createJsonAdapter } from "@gramio/views";
+import { createJsonAdapter } from "@gramio/views/json";
+import { loadJsonViewsDir } from "@gramio/views/fs";
 
 const views = await loadJsonViewsDir("./views");
 const adapter = createJsonAdapter({ views });

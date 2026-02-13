@@ -100,16 +100,4 @@ export function initViewsBuilder<
 	return returnResult;
 }
 
-export type {
-	JsonReplyKeyboardButton,
-	JsonReplyMarkup,
-	JsonViewDefinition,
-	ViewAdapter,
-	ViewMap,
-} from "./adapters/index.ts";
-export {
-	createJsonAdapter,
-	defineAdapter,
-	loadJsonViews,
-	loadJsonViewsDir,
-} from "./adapters/index.ts";
+export type { ViewAdapter, ViewMap } from "./adapters/types.ts";
