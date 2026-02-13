@@ -148,6 +148,66 @@ The `reply_markup` field mirrors the [Telegram Bot API](https://core.telegram.or
 
 Supported media types: `photo`, `video`, `animation`, `audio`, `document`.
 
+### Globals access with `$`
+
+Use `{{$path}}` to reference globals (the values passed to `buildRender`) directly from JSON templates:
+
+```json
+{
+    "welcome": { "text": "Welcome to {{$appName}}!" },
+    "profile": { "text": "{{$user.name}} (age {{$user.age}})" }
+}
+```
+
+```ts
+// globals passed in .derive():
+{ appName: "MyBot", user: { name: "Alice", age: 25 } }
+```
+
+Mix `$` globals with regular `{{params}}` freely: `"{{$botName}} says hi to {{name}}"`.
+
+### Custom `resolve` callback
+
+For i18n or any custom interpolation logic, pass a `resolve` function to `createJsonAdapter`. It is called for every `{{key}}` (except `$`-prefixed) before falling back to params:
+
+```ts
+const adapter = createJsonAdapter<{ t: (key: string) => string }, ViewMap>({
+    views: {
+        greet: { text: "{{t:hello}}, {{name}}!" },
+    },
+    resolve: (key, globals) => {
+        if (key.startsWith("t:")) return globals.t(key.slice(2));
+    },
+});
+```
+
+If `resolve` returns `undefined`, the key falls through to params. Unresolved keys are preserved as `{{key}}`.
+
+All three sources work everywhere — text, keyboard buttons, media URLs, placeholders:
+
+```json
+{ "text": "{{$brand}}: {{t:title}} — {{subtitle}}" }
+```
+
+### Per-locale file loading
+
+Organize JSON views by locale using separate directories:
+
+```
+views/
+  en/
+    welcome.json
+  ru/
+    welcome.json
+```
+
+```ts
+const enViews = await loadJsonViewsDir("./views/en");
+const ruViews = await loadJsonViewsDir("./views/ru");
+
+// select adapter based on user locale in .derive()
+```
+
 ### Loading JSON views from the filesystem
 
 **Single file** — one JSON file with multiple views:

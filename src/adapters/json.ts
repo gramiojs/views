@@ -38,34 +38,57 @@ export interface JsonViewDefinition {
 	media?: JsonMediaDefinition | JsonMediaDefinition[];
 }
 
-function interpolate(
-	template: string,
-	params: Record<string, unknown>,
-): string {
-	return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-		return key in params ? String(params[key]) : `{{${key}}}`;
-	});
+type Interpolate = (template: string) => string;
+
+function getByPath(obj: object, path: string): unknown {
+	let current: any = obj;
+	for (const key of path.split(".")) {
+		if (current == null) return undefined;
+		current = current[key];
+	}
+	return current;
+}
+
+function createInterpolate(
+	globals?: object,
+	resolve?: (key: string, globals: any) => string | undefined,
+	params?: Record<string, unknown>,
+): Interpolate {
+	return (template) =>
+		template.replace(/\{\{([^}]+)\}\}/g, (match, rawKey) => {
+			const key = (rawKey as string).trim();
+			if (key.startsWith("$") && globals) {
+				const value = getByPath(globals, key.slice(1));
+				return value !== undefined ? String(value) : match;
+			}
+			if (resolve && globals) {
+				const resolved = resolve(key, globals);
+				if (resolved !== undefined) return resolved;
+			}
+			if (params && key in params) return String(params[key]);
+			return match;
+		});
 }
 
 function interpolateButton(
 	button: JsonKeyboardButton,
-	params: Record<string, unknown>,
+	interpolate: Interpolate,
 ): JsonKeyboardButton {
 	const result: JsonKeyboardButton = {
-		text: interpolate(button.text, params),
+		text: interpolate(button.text),
 	};
 	if (button.callback_data !== undefined)
-		result.callback_data = interpolate(button.callback_data, params);
-	if (button.url !== undefined) result.url = interpolate(button.url, params);
+		result.callback_data = interpolate(button.callback_data);
+	if (button.url !== undefined) result.url = interpolate(button.url);
 	return result;
 }
 
 function interpolateReplyButton(
 	button: JsonReplyKeyboardButton,
-	params: Record<string, unknown>,
+	interpolate: Interpolate,
 ): JsonReplyKeyboardButton {
 	const result: JsonReplyKeyboardButton = {
-		text: interpolate(button.text, params),
+		text: interpolate(button.text),
 	};
 	if (button.request_contact !== undefined)
 		result.request_contact = button.request_contact;
@@ -76,12 +99,12 @@ function interpolateReplyButton(
 
 function interpolateReplyMarkup(
 	markup: JsonReplyMarkup,
-	params: Record<string, unknown>,
+	interpolate: Interpolate,
 ): JsonReplyMarkup {
 	if ("inline_keyboard" in markup) {
 		return {
 			inline_keyboard: markup.inline_keyboard.map((row) =>
-				row.map((btn) => interpolateButton(btn, params)),
+				row.map((btn) => interpolateButton(btn, interpolate)),
 			),
 		};
 	}
@@ -89,10 +112,10 @@ function interpolateReplyMarkup(
 		return {
 			...markup,
 			keyboard: markup.keyboard.map((row) =>
-				row.map((btn) => interpolateReplyButton(btn, params)),
+				row.map((btn) => interpolateReplyButton(btn, interpolate)),
 			),
 			input_field_placeholder: markup.input_field_placeholder
-				? interpolate(markup.input_field_placeholder, params)
+				? interpolate(markup.input_field_placeholder)
 				: markup.input_field_placeholder,
 		};
 	}
@@ -100,7 +123,7 @@ function interpolateReplyMarkup(
 		return {
 			...markup,
 			input_field_placeholder: markup.input_field_placeholder
-				? interpolate(markup.input_field_placeholder, params)
+				? interpolate(markup.input_field_placeholder)
 				: markup.input_field_placeholder,
 		};
 	}
@@ -109,9 +132,9 @@ function interpolateReplyMarkup(
 
 function interpolateMedia(
 	media: JsonMediaDefinition,
-	params: Record<string, unknown>,
+	interpolate: Interpolate,
 ): JsonMediaDefinition {
-	return { type: media.type, media: interpolate(media.media, params) };
+	return { type: media.type, media: interpolate(media.media) };
 }
 
 export function createJsonAdapter<
@@ -119,8 +142,10 @@ export function createJsonAdapter<
 	M extends ViewMap,
 >(options: {
 	views: Record<keyof M & string, JsonViewDefinition>;
+	resolve?: (key: string, globals: Globals) => string | undefined;
 }): ViewAdapter<Globals, M> {
 	const views = new Map<string, ViewRender<Globals, any>>();
+	const resolveOpt = options.resolve;
 
 	for (const [key, definition] of Object.entries(options.views) as [
 		string,
@@ -130,30 +155,28 @@ export function createJsonAdapter<
 			this: WithResponseContext<Globals>,
 			params?: Record<string, unknown>,
 		) {
-			const response = this.response;
+			const { response, ...globals } = this as any;
+			const interpolate = createInterpolate(globals, resolveOpt, params);
+
 			if (definition.text) {
-				const text = params
-					? interpolate(definition.text, params)
-					: definition.text;
-				response.text(text);
+				response.text(interpolate(definition.text));
 			}
 			if (definition.reply_markup) {
-				const markup = params
-					? interpolateReplyMarkup(definition.reply_markup, params)
-					: definition.reply_markup;
-				response.keyboard(markup);
+				response.keyboard(
+					interpolateReplyMarkup(definition.reply_markup, interpolate),
+				);
 			}
 			if (definition.media) {
 				if (Array.isArray(definition.media)) {
-					const group = params
-						? definition.media.map((m) => interpolateMedia(m, params))
-						: definition.media;
-					response.media(group as any);
+					response.media(
+						definition.media.map((m) =>
+							interpolateMedia(m, interpolate),
+						) as any,
+					);
 				} else {
-					const media = params
-						? interpolateMedia(definition.media, params)
-						: definition.media;
-					response.media(media as any);
+					response.media(
+						interpolateMedia(definition.media, interpolate) as any,
+					);
 				}
 			}
 			return response;

@@ -578,6 +578,285 @@ describe("createJsonAdapter", () => {
 	});
 });
 
+describe("globals access via $", () => {
+	test("{{$key}} resolves from globals", async () => {
+		const adapter = createJsonAdapter<{ appName: string }, any>({
+			views: {
+				about: { text: "Welcome to {{$appName}}!" },
+			},
+		});
+
+		const view = adapter.resolve("about");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, { appName: "MyBot" }, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Welcome to MyBot!", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("{{$nested.path}} resolves deep globals", async () => {
+		const adapter = createJsonAdapter<
+			{ user: { name: string; age: number } },
+			any
+		>({
+			views: {
+				profile: { text: "{{$user.name}} is {{$user.age}} years old" },
+			},
+		});
+
+		const view = adapter.resolve("profile");
+		const ctx = createMessageContext();
+		await view.renderWithContext(
+			ctx as any,
+			{ user: { name: "Alice", age: 25 } },
+			[] as any,
+		);
+
+		expect(ctx.send).toHaveBeenCalledWith("Alice is 25 years old", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("{{$unknown}} preserved as-is", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				test: { text: "Value: {{$missing}}" },
+			},
+		});
+
+		const view = adapter.resolve("test");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Value: {{$missing}}", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("$ and params combined in same template", async () => {
+		const adapter = createJsonAdapter<{ botName: string }, any>({
+			views: {
+				greet: { text: "{{$botName}} says hello to {{name}}!" },
+			},
+		});
+
+		const view = adapter.resolve("greet");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, { botName: "Bot" }, [
+			{ name: "Bob" },
+		] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Bot says hello to Bob!", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("$ works in inline keyboard buttons", async () => {
+		const adapter = createJsonAdapter<{ prefix: string }, any>({
+			views: {
+				menu: {
+					text: "Menu",
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: "{{$prefix}}: {{label}}", callback_data: "go" }],
+						],
+					},
+				},
+			},
+		});
+
+		const view = adapter.resolve("menu");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, { prefix: "CMD" }, [
+			{ label: "Start" },
+		] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Menu", {
+			reply_markup: {
+				inline_keyboard: [
+					[{ text: "CMD: Start", callback_data: "go" }],
+				],
+			},
+		});
+	});
+
+	test("$ works in media url", async () => {
+		const adapter = createJsonAdapter<{ cdnUrl: string }, any>({
+			views: {
+				photo: {
+					media: { type: "photo", media: "{{$cdnUrl}}/{{file}}" },
+				},
+			},
+		});
+
+		const view = adapter.resolve("photo");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, { cdnUrl: "https://cdn.example.com" }, [
+			{ file: "cat.jpg" },
+		] as any);
+
+		expect(ctx.sendMedia).toHaveBeenCalledWith({
+			type: "photo",
+			photo: "https://cdn.example.com/cat.jpg",
+			caption: undefined,
+			reply_markup: undefined,
+		});
+	});
+
+	test("$ works for void views (no params)", async () => {
+		const adapter = createJsonAdapter<{ version: string }, any>({
+			views: {
+				info: { text: "Version: {{$version}}" },
+			},
+		});
+
+		const view = adapter.resolve("info");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, { version: "1.2.3" }, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Version: 1.2.3", {
+			reply_markup: undefined,
+		});
+	});
+});
+
+describe("resolve callback", () => {
+	test("resolve handles custom keys", async () => {
+		const translations: Record<string, string> = {
+			welcome: "Добро пожаловать",
+			goodbye: "До свидания",
+		};
+
+		const adapter = createJsonAdapter<object, any>({
+			views: {
+				greet: { text: "{{t:welcome}}, {{name}}!" },
+			},
+			resolve: (key) => {
+				if (key.startsWith("t:")) return translations[key.slice(2)];
+			},
+		});
+
+		const view = adapter.resolve("greet");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [{ name: "Alice" }] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Добро пожаловать, Alice!", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("resolve returning undefined falls through to params", async () => {
+		const adapter = createJsonAdapter<object, any>({
+			views: {
+				test: { text: "{{custom}} and {{name}}" },
+			},
+			resolve: (key) => {
+				if (key === "custom") return "RESOLVED";
+			},
+		});
+
+		const view = adapter.resolve("test");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [{ name: "Bob" }] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("RESOLVED and Bob", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("resolve receives globals", async () => {
+		const adapter = createJsonAdapter<
+			{ t: (key: string) => string },
+			any
+		>({
+			views: {
+				greet: { text: "{{t:hello}}" },
+			},
+			resolve: (key, globals) => {
+				if (key.startsWith("t:")) return globals.t(key.slice(2));
+			},
+		});
+
+		const view = adapter.resolve("greet");
+		const ctx = createMessageContext();
+		const t = (key: string) =>
+			({ hello: "Привет", bye: "Пока" })[key] ?? key;
+		await view.renderWithContext(ctx as any, { t }, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Привет", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("combined $, resolve, and params", async () => {
+		const adapter = createJsonAdapter<{ brand: string }, any>({
+			views: {
+				full: { text: "{{$brand}}: {{t:title}} — {{subtitle}}" },
+			},
+			resolve: (key) => {
+				if (key === "t:title") return "Главная";
+			},
+		});
+
+		const view = adapter.resolve("full");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, { brand: "GramIO" }, [
+			{ subtitle: "страница" },
+		] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("GramIO: Главная — страница", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("resolve works in keyboard buttons", async () => {
+		const adapter = createJsonAdapter<object, any>({
+			views: {
+				menu: {
+					text: "Menu",
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: "{{t:btn_help}}", callback_data: "help" }],
+						],
+					},
+				},
+			},
+			resolve: (key) => {
+				if (key === "t:btn_help") return "Помощь";
+			},
+		});
+
+		const view = adapter.resolve("menu");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Menu", {
+			reply_markup: {
+				inline_keyboard: [[{ text: "Помощь", callback_data: "help" }]],
+			},
+		});
+	});
+
+	test("unresolved keys preserved as-is", async () => {
+		const adapter = createJsonAdapter<object, any>({
+			views: {
+				test: { text: "{{t:missing}} and {{also_missing}}" },
+			},
+			resolve: () => undefined,
+		});
+
+		const view = adapter.resolve("test");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith(
+			"{{t:missing}} and {{also_missing}}",
+			{ reply_markup: undefined },
+		);
+	});
+});
+
 function createMessageContext() {
 	return {
 		is: (type: string) => type === "message",
