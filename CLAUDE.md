@@ -34,8 +34,8 @@ The library has a small, focused design with core modules in `src/`:
     - **`define.ts`** — `defineAdapter()` — creates an adapter from programmatic view callbacks.
     - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with three interpolation sources: `{{key}}` from params, `{{$path}}` from globals (dot-path access), and custom `resolve(key, globals)` callback (e.g. for i18n: `{{t:hello}}`). Supports `text`, `reply_markup` (mirrors Telegram Bot API: `{ inline_keyboard }`, `{ keyboard, resize_keyboard, ... }`, `{ remove_keyboard }`, `{ force_reply }`), and `media` (single or array for media groups). Interpolation works in all string fields.
     - **`fs.ts`** — FS loading helpers:
-        - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions.
-        - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory; subdirectory paths become dot-separated keys (e.g. `goods/things/happens.json` → `"goods.things.happens"`).
+        - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions (format: `{ "viewName": { text: ... }, ... }`).
+        - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory. Each file must contain an object with multiple view definitions (format: `{ "viewName": { text: ... }, ... }`). The final view key is the file path (dot-separated) + the view name (e.g., `goods/products.json` with `{ "list": {...}, "detail": {...} }` → `"goods.products.list"`, `"goods.products.detail"`).
     - **`index.ts`** — Re-exports all adapter utilities.
 
 ### Key Pattern

@@ -58,12 +58,33 @@ const bot = new Bot(process.env.BOT_TOKEN!)
 bot.start();
 ```
 
+## Imports
+
+The library supports modular imports to avoid bundling unnecessary dependencies:
+
+```ts
+// Main entry - everything
+import { initViewsBuilder, createJsonAdapter, loadJsonViews } from "@gramio/views";
+
+// Or import adapters separately (recommended)
+import { initViewsBuilder } from "@gramio/views";
+import { createJsonAdapter } from "@gramio/views/json";
+import { loadJsonViews, loadJsonViewsDir } from "@gramio/views/fs";
+import { defineAdapter } from "@gramio/views/define";
+```
+
+**Why separate imports?**
+- `@gramio/views/fs` includes Node.js filesystem APIs — don't import it in browser/edge environments
+- Better tree-shaking and smaller bundles
+- Clear separation of concerns
+
 ## JSON Adapter
 
 Define views as JSON — useful for CMS-driven or user-editable templates.
 
 ```ts
-import { initViewsBuilder, createJsonAdapter } from "@gramio/views";
+import { initViewsBuilder } from "@gramio/views";
+import { createJsonAdapter } from "@gramio/views/json";
 
 const adapter = createJsonAdapter({
     views: {
@@ -245,15 +266,48 @@ const views = await loadJsonViews("./views.json");
 const adapter = createJsonAdapter({ views });
 ```
 
-**Directory** — each `.json` file is one view, subdirectories become dot-separated keys:
+**Directory** — each `.json` file contains multiple named views:
 
 ```
 views/
-  welcome.json          → "welcome"
+  messages.json         → "messages.welcome", "messages.goodbye", "messages.help"
   goods/
-    list.json           → "goods.list"
-    items/
-      detail.json       → "goods.items.detail"
+    products.json       → "goods.products.list", "goods.products.detail"
+```
+
+```json
+// messages.json
+{
+    "welcome": { "text": "Hello, {{name}}!" },
+    "goodbye": { "text": "Bye, {{name}}!" },
+    "help": { "text": "Need help?" }
+}
+```
+
+```json
+// goods/products.json
+{
+    "list": { "text": "Product list" },
+    "detail": {
+        "text": "Product {{name}}",
+        "media": { "type": "photo", "media": "{{photo}}" }
+    }
+}
+```
+
+**How it works:**
+
+Each `.json` file must contain an object where:
+- **Keys** are view names
+- **Values** are view definitions (`{ text?, reply_markup?, media? }`)
+
+The final view key is the file path (dot-separated) + the view name:
+
+```
+views/
+  main.json             ← { "home": {...}, "about": {...} }
+  user/
+    profile.json        ← { "view": {...}, "edit": {...} }
 ```
 
 ```ts
@@ -261,5 +315,20 @@ import { loadJsonViewsDir, createJsonAdapter } from "@gramio/views";
 
 const views = await loadJsonViewsDir("./views");
 const adapter = createJsonAdapter({ views });
-// render("goods.items.detail", params)
+
+// Available keys:
+// - "main.home"
+// - "main.about"
+// - "user.profile.view"
+// - "user.profile.edit"
+```
+
+You can now use **any** key names, including `text`, `reply_markup`, or `media` — they're just view names, not reserved words:
+
+```json
+// meta.json
+{
+    "text": { "text": "A view about text" },
+    "media": { "text": "A view about media" }
+}
 ```

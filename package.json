@@ -22,13 +22,45 @@
 		"gramio": "^0.4.10"
 	},
 	"exports": {
-		"import": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.js"
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
 		},
-		"require": {
-			"types": "./dist/index.d.cts",
-			"default": "./dist/index.cjs"
+		"./json": {
+			"import": {
+				"types": "./dist/json.d.ts",
+				"default": "./dist/json.js"
+			},
+			"require": {
+				"types": "./dist/json.d.cts",
+				"default": "./dist/json.cjs"
+			}
+		},
+		"./fs": {
+			"import": {
+				"types": "./dist/fs.d.ts",
+				"default": "./dist/fs.js"
+			},
+			"require": {
+				"types": "./dist/fs.d.cts",
+				"default": "./dist/fs.cjs"
+			}
+		},
+		"./define": {
+			"import": {
+				"types": "./dist/define.d.ts",
+				"default": "./dist/define.js"
+			},
+			"require": {
+				"types": "./dist/define.d.cts",
+				"default": "./dist/define.cjs"
+			}
 		}
 	},
 	"description": "server-side parser for telegram init-data",

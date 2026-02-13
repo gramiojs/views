@@ -70,33 +70,32 @@ describe("loadJsonViews", () => {
 });
 
 describe("loadJsonViewsDir", () => {
-	test("loads all .json files from a directory", async () => {
+	test("loads all .json files from a directory (multi-view format)", async () => {
 		await writeFile(
-			join(testDir, "welcome.json"),
-			JSON.stringify({ text: "Hello!" }),
-		);
-		await writeFile(
-			join(testDir, "goodbye.json"),
-			JSON.stringify({ text: "Bye!" }),
+			join(testDir, "messages.json"),
+			JSON.stringify({
+				welcome: { text: "Hello!" },
+				goodbye: { text: "Bye!" },
+			}),
 		);
 
 		const result = await loadJsonViewsDir(testDir);
 		expect(result).toEqual({
-			welcome: { text: "Hello!" },
-			goodbye: { text: "Bye!" },
+			"messages.welcome": { text: "Hello!" },
+			"messages.goodbye": { text: "Bye!" },
 		});
 	});
 
 	test("ignores non-json files", async () => {
 		await writeFile(
 			join(testDir, "valid.json"),
-			JSON.stringify({ text: "ok" }),
+			JSON.stringify({ view: { text: "ok" } }),
 		);
 		await writeFile(join(testDir, "readme.txt"), "not a view");
 		await writeFile(join(testDir, "data.jsonl"), '{"line": 1}');
 
 		const result = await loadJsonViewsDir(testDir);
-		expect(Object.keys(result)).toEqual(["valid"]);
+		expect(Object.keys(result)).toEqual(["valid.view"]);
 	});
 
 	test("returns empty object for empty directory", async () => {
@@ -108,46 +107,140 @@ describe("loadJsonViewsDir", () => {
 		expect(loadJsonViewsDir(join(testDir, "nope"))).rejects.toThrow();
 	});
 
-	test("uses filename without extension as key", async () => {
+	test("uses filename without extension as part of key", async () => {
 		await writeFile(
-			join(testDir, "my-view.json"),
-			JSON.stringify({ text: "hi" }),
+			join(testDir, "my-views.json"),
+			JSON.stringify({ hello: { text: "hi" } }),
 		);
 
 		const result = await loadJsonViewsDir(testDir);
-		expect(result["my-view"]).toEqual({ text: "hi" });
+		expect(result["my-views.hello"]).toEqual({ text: "hi" });
 	});
 
 	test("loads subdirectories with dot-separated keys", async () => {
 		await mkdir(join(testDir, "goods", "things"), { recursive: true });
 		await writeFile(
-			join(testDir, "goods", "things", "happens.json"),
-			JSON.stringify({ text: "nested!" }),
+			join(testDir, "goods", "things", "events.json"),
+			JSON.stringify({ happens: { text: "nested!" } }),
 		);
 		await writeFile(
-			join(testDir, "goods", "list.json"),
-			JSON.stringify({ text: "goods list" }),
+			join(testDir, "goods", "products.json"),
+			JSON.stringify({ list: { text: "goods list" } }),
 		);
 		await writeFile(
-			join(testDir, "top.json"),
-			JSON.stringify({ text: "top level" }),
+			join(testDir, "main.json"),
+			JSON.stringify({ top: { text: "top level" } }),
 		);
 
 		const result = await loadJsonViewsDir(testDir);
-		expect(result["goods.things.happens"]).toEqual({ text: "nested!" });
-		expect(result["goods.list"]).toEqual({ text: "goods list" });
-		expect(result["top"]).toEqual({ text: "top level" });
+		expect(result["goods.things.events.happens"]).toEqual({ text: "nested!" });
+		expect(result["goods.products.list"]).toEqual({ text: "goods list" });
+		expect(result["main.top"]).toEqual({ text: "top level" });
 	});
 
 	test("ignores non-json files in subdirectories", async () => {
 		await mkdir(join(testDir, "sub"), { recursive: true });
 		await writeFile(
-			join(testDir, "sub", "view.json"),
-			JSON.stringify({ text: "ok" }),
+			join(testDir, "sub", "views.json"),
+			JSON.stringify({ main: { text: "ok" } }),
 		);
 		await writeFile(join(testDir, "sub", "notes.txt"), "ignore me");
 
 		const result = await loadJsonViewsDir(testDir);
-		expect(Object.keys(result)).toEqual(["sub.view"]);
+		expect(Object.keys(result)).toEqual(["sub.views.main"]);
+	});
+
+	test("supports multi-view format {key: definition}", async () => {
+		await writeFile(
+			join(testDir, "messages.json"),
+			JSON.stringify({
+				welcome: { text: "Hello, {{name}}!" },
+				goodbye: { text: "Bye, {{name}}!" },
+				help: { text: "Need help?" },
+			}),
+		);
+
+		const result = await loadJsonViewsDir(testDir);
+		expect(result["messages.welcome"]).toEqual({ text: "Hello, {{name}}!" });
+		expect(result["messages.goodbye"]).toEqual({ text: "Bye, {{name}}!" });
+		expect(result["messages.help"]).toEqual({ text: "Need help?" });
+	});
+
+	test("supports multi-view format in nested directories", async () => {
+		await mkdir(join(testDir, "goods"), { recursive: true });
+		await writeFile(
+			join(testDir, "goods", "products.json"),
+			JSON.stringify({
+				list: { text: "Product list" },
+				detail: { text: "Product {{id}}" },
+			}),
+		);
+
+		const result = await loadJsonViewsDir(testDir);
+		expect(result["goods.products.list"]).toEqual({ text: "Product list" });
+		expect(result["goods.products.detail"]).toEqual({
+			text: "Product {{id}}",
+		});
+	});
+
+	test("supports complex view definitions", async () => {
+		await writeFile(
+			join(testDir, "complex.json"),
+			JSON.stringify({
+				profile: {
+					text: "Profile {{name}}",
+					reply_markup: {
+						inline_keyboard: [
+							[{ text: "Edit", callback_data: "edit_{{id}}" }],
+						],
+					},
+					media: { type: "photo", media: "{{avatar}}" },
+				},
+				gallery: {
+					text: "Photos",
+					media: [
+						{ type: "photo", media: "{{photo1}}" },
+						{ type: "photo", media: "{{photo2}}" },
+					],
+				},
+			}),
+		);
+
+		const result = await loadJsonViewsDir(testDir);
+		expect(result["complex.profile"]).toEqual({
+			text: "Profile {{name}}",
+			reply_markup: {
+				inline_keyboard: [[{ text: "Edit", callback_data: "edit_{{id}}" }]],
+			},
+			media: { type: "photo", media: "{{avatar}}" },
+		});
+		expect(result["complex.gallery"]).toEqual({
+			text: "Photos",
+			media: [
+				{ type: "photo", media: "{{photo1}}" },
+				{ type: "photo", media: "{{photo2}}" },
+			],
+		});
+	});
+
+	test("allows any key names including text, reply_markup, media", async () => {
+		// Now these are just view names, not reserved words
+		await writeFile(
+			join(testDir, "views.json"),
+			JSON.stringify({
+				text: { text: "This is a view named 'text'" },
+				reply_markup: { text: "This is a view named 'reply_markup'" },
+				media: { text: "This is a view named 'media'" },
+			}),
+		);
+
+		const result = await loadJsonViewsDir(testDir);
+		expect(result["views.text"]).toEqual({ text: "This is a view named 'text'" });
+		expect(result["views.reply_markup"]).toEqual({
+			text: "This is a view named 'reply_markup'",
+		});
+		expect(result["views.media"]).toEqual({
+			text: "This is a view named 'media'",
+		});
 	});
 });
