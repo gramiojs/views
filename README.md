@@ -189,23 +189,41 @@ All three sources work everywhere — text, keyboard buttons, media URLs, placeh
 { "text": "{{$brand}}: {{t:title}} — {{subtitle}}" }
 ```
 
-### Per-locale file loading
+### i18n with adapter factory
 
-Organize JSON views by locale using separate directories:
+For i18n, write entire JSON templates in each language and pass a **factory function** to `from()`. The factory receives globals and returns the correct adapter per locale:
 
 ```
 views/
   en/
-    welcome.json
+    welcome.json    → { "text": "Hello, {{name}}!" }
   ru/
-    welcome.json
+    welcome.json    → { "text": "Привет, {{name}}!" }
 ```
 
 ```ts
-const enViews = await loadJsonViewsDir("./views/en");
-const ruViews = await loadJsonViewsDir("./views/ru");
+import { loadJsonViewsDir, createJsonAdapter, initViewsBuilder } from "@gramio/views";
 
-// select adapter based on user locale in .derive()
+const adapters = {
+    en: createJsonAdapter({ views: await loadJsonViewsDir("./views/en") }),
+    ru: createJsonAdapter({ views: await loadJsonViewsDir("./views/ru") }),
+};
+
+const defineView = initViewsBuilder<Data>().from(
+    (globals) => adapters[globals.locale]
+);
+
+// In .derive(), locale comes from the user context:
+.derive(["message", "callback_query"], (context) => ({
+    render: defineView.buildRender(context, {
+        locale: context.from.languageCode ?? "en",
+        ...
+    }),
+}))
+
+// render stays the same — adapter is selected automatically:
+context.render("welcome", { name: "Alice" });
+// → "Привет, Alice!" for Russian users
 ```
 
 ### Loading JSON views from the filesystem

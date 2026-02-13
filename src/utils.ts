@@ -28,7 +28,9 @@ export interface InitViewsBuilderReturn<Globals extends object> {
 	(): ViewBuilder<Globals>;
 
 	from: <M extends ViewMap>(
-		adapter: ViewAdapter<Globals, M>,
+		adapter:
+			| ViewAdapter<Globals, M>
+			| ((globals: Globals) => ViewAdapter<Globals, M>),
 	) => InitViewsBuilderWithAdapterReturn<Globals, M>;
 
 	buildRender: (
@@ -60,7 +62,9 @@ export interface InitViewsBuilderWithAdapterReturn<
 > {
 	(): ViewBuilder<Globals>;
 
-	adapter: ViewAdapter<Globals, M>;
+	adapter:
+		| ViewAdapter<Globals, M>
+		| ((globals: Globals) => ViewAdapter<Globals, M>);
 
 	buildRender: (
 		context: Context<BotLike>,

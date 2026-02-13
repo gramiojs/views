@@ -224,6 +224,111 @@ describe("initViewsBuilder.from() with adapter", () => {
 	});
 });
 
+describe("initViewsBuilder.from() with adapter factory", () => {
+	test("accepts a factory function", () => {
+		type Globals = { locale: string };
+		const defineView = initViewsBuilder<Globals>();
+		const adapter = createJsonAdapter<Globals, any>({
+			views: { welcome: { text: "Hello!" } },
+		});
+		const factory = (globals: Globals) => adapter;
+		const result = defineView.from(factory);
+
+		expect(result.adapter).toBe(factory);
+		expect(typeof result.buildRender).toBe("function");
+	});
+
+	test("factory selects adapter based on globals", async () => {
+		type Globals = { locale: string };
+		const defineView = initViewsBuilder<Globals>();
+
+		const adapters = {
+			en: createJsonAdapter<Globals, any>({
+				views: { greet: { text: "Hello!" } },
+			}),
+			ru: createJsonAdapter<Globals, any>({
+				views: { greet: { text: "Привет!" } },
+			}),
+		} as Record<string, ReturnType<typeof createJsonAdapter<Globals, any>>>;
+		const withAdapter = defineView.from(
+			(globals: Globals) => adapters[globals.locale],
+		);
+
+		const ctxEn = createMessageContext();
+		const renderEn = withAdapter.buildRender(ctxEn, { locale: "en" });
+		await renderEn("greet" as any);
+		expect(ctxEn.send).toHaveBeenCalledWith("Hello!", {
+			reply_markup: undefined,
+		});
+
+		const ctxRu = createMessageContext();
+		const renderRu = withAdapter.buildRender(ctxRu, { locale: "ru" } as any);
+		await renderRu("greet" as any);
+		expect(ctxRu.send).toHaveBeenCalledWith("Привет!", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("factory works with render.send and render.edit", async () => {
+		type Globals = { locale: string };
+		const defineView = initViewsBuilder<Globals>();
+
+		const adapters = {
+			en: createJsonAdapter<Globals, any>({
+				views: { msg: { text: "English" } },
+			}),
+			ru: createJsonAdapter<Globals, any>({
+				views: { msg: { text: "Русский" } },
+			}),
+		} as Record<string, ReturnType<typeof createJsonAdapter<Globals, any>>>;
+		const withAdapter = defineView.from(
+			(globals: Globals) => adapters[globals.locale],
+		);
+
+		const ctxSend = createCallbackQueryContext();
+		const renderSend = withAdapter.buildRender(ctxSend, {
+			locale: "ru",
+		} as any);
+		await renderSend.send("msg" as any);
+		expect(ctxSend.send).toHaveBeenCalledWith("Русский", {
+			reply_markup: undefined,
+		});
+
+		const ctxEdit = createCallbackQueryContext();
+		const renderEdit = withAdapter.buildRender(ctxEdit, {
+			locale: "en",
+		} as any);
+		await renderEdit.edit("msg" as any);
+		expect(ctxEdit.editText).toHaveBeenCalledWith("English", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("factory still allows ViewRender objects alongside string keys", async () => {
+		type Globals = { locale: string };
+		const defineView = initViewsBuilder<Globals>();
+
+		const adapter = createJsonAdapter<Globals, any>({
+			views: { json: { text: "from adapter" } },
+		});
+		const withAdapter = defineView.from(
+			(_globals: Globals) => adapter,
+		);
+
+		const customView = withAdapter().render(function () {
+			return this.response.text("from code");
+		});
+
+		const ctx = createMessageContext();
+		const render = withAdapter.buildRender(ctx, { locale: "en" } as any);
+
+		await render(customView);
+		expect(ctx.send).toHaveBeenCalledWith("from code", {
+			reply_markup: undefined,
+		});
+	});
+});
+
 describe("globals flow", () => {
 	test("globals are passed through to view render callback", async () => {
 		type Globals = { locale: string };

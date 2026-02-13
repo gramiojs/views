@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The library has a small, focused design with core modules in `src/`:
 
-- **`index.ts`** — `initViewsBuilder<Globals>()` factory. Returns a callable that creates `ViewBuilder` instances, plus a `.buildRender(context, globals)` method that produces `render`/`render.send`/`render.edit` functions for use inside GramIO's `.derive()`.
+- **`index.ts`** — `initViewsBuilder<Globals>()` factory. Returns a callable that creates `ViewBuilder` instances, plus a `.buildRender(context, globals)` method that produces `render`/`render.send`/`render.edit` functions for use inside GramIO's `.derive()`. The `.from()` method accepts either a static `ViewAdapter` or a factory function `(globals) => ViewAdapter` for dynamic adapter selection (e.g. per-locale i18n).
 - **`view.ts`** — `ViewBuilder` class. Has a single `.render(callback)` method that takes a `this`-typed callback (accessing globals + `response`) and returns a `ViewRender`.
 - **`render.ts`** — `ViewRender` class. Core rendering engine. `renderWithContext()` executes the view callback, then decides whether to send or edit based on the Telegram context type. Handles text-only, single media, and media group messages with proper edit-to-send fallbacks.
 - **`response.ts`** — `ResponseView` class. Fluent builder (`.text()`, `.keyboard()`, `.media()`) that collects the response payload.

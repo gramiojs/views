@@ -40,16 +40,22 @@ export function initViewsBuilder<
 	};
 
 	returnResult.from = <M extends ViewMap>(
-		adapter: ViewAdapter<Globals, M>,
+		adapterOrFactory:
+			| ViewAdapter<Globals, M>
+			| ((globals: Globals) => ViewAdapter<Globals, M>),
 	): InitViewsBuilderWithAdapterReturn<Globals, M> => {
 		const result: InitViewsBuilderWithAdapterReturn<Globals, M> = (() => {
 			return new ViewBuilder<Globals>();
 		}) as InitViewsBuilderWithAdapterReturn<Globals, M>;
 
-		result.adapter = adapter;
+		result.adapter = adapterOrFactory;
 
 		result.buildRender = (context, globals) => {
 			const ctx = context as any;
+			const adapter =
+				typeof adapterOrFactory === "function"
+					? adapterOrFactory(globals)
+					: adapterOrFactory;
 
 			const render = (viewOrKey: any, ...args: any[]) => {
 				if (typeof viewOrKey === "string") {
