@@ -95,6 +95,7 @@ export function initViewsBuilder<
 }
 
 export type {
+	JsonReplyKeyboardButton,
 	JsonViewDefinition,
 	ViewAdapter,
 	ViewMap,

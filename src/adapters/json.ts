@@ -8,6 +8,12 @@ export interface JsonKeyboardButton {
 	url?: string;
 }
 
+export interface JsonReplyKeyboardButton {
+	text: string;
+	request_contact?: boolean;
+	request_location?: boolean;
+}
+
 export interface JsonMediaDefinition {
 	type: "photo" | "video" | "animation" | "audio" | "document";
 	media: string;
@@ -16,6 +22,12 @@ export interface JsonMediaDefinition {
 export interface JsonViewDefinition {
 	text?: string;
 	keyboard?: JsonKeyboardButton[][];
+	reply_keyboard?: JsonReplyKeyboardButton[][];
+	resize_keyboard?: boolean;
+	one_time_keyboard?: boolean;
+	is_persistent?: boolean;
+	input_field_placeholder?: string;
+	selective?: boolean;
 	media?: JsonMediaDefinition | JsonMediaDefinition[];
 }
 
@@ -41,6 +53,20 @@ function interpolateButton(
 	return result;
 }
 
+function interpolateReplyButton(
+	button: JsonReplyKeyboardButton,
+	params: Record<string, unknown>,
+): JsonReplyKeyboardButton {
+	const result: JsonReplyKeyboardButton = {
+		text: interpolate(button.text, params),
+	};
+	if (button.request_contact !== undefined)
+		result.request_contact = button.request_contact;
+	if (button.request_location !== undefined)
+		result.request_location = button.request_location;
+	return result;
+}
+
 function interpolateMedia(
 	media: JsonMediaDefinition,
 	params: Record<string, unknown>,
@@ -60,6 +86,12 @@ export function createJsonAdapter<
 		string,
 		JsonViewDefinition,
 	][]) {
+		if (definition.keyboard && definition.reply_keyboard) {
+			throw new Error(
+				`View "${key}" cannot have both "keyboard" and "reply_keyboard"`,
+			);
+		}
+
 		const callback = function (
 			this: WithResponseContext<Globals>,
 			params?: Record<string, unknown>,
@@ -78,6 +110,25 @@ export function createJsonAdapter<
 						)
 					: definition.keyboard;
 				response.keyboard({ inline_keyboard: rows });
+			}
+			if (definition.reply_keyboard) {
+				const rows = params
+					? definition.reply_keyboard.map((row) =>
+							row.map((btn) => interpolateReplyButton(btn, params)),
+						)
+					: definition.reply_keyboard;
+				response.keyboard({
+					keyboard: rows,
+					resize_keyboard: definition.resize_keyboard,
+					one_time_keyboard: definition.one_time_keyboard,
+					is_persistent: definition.is_persistent,
+					input_field_placeholder: definition.input_field_placeholder
+						? params
+							? interpolate(definition.input_field_placeholder, params)
+							: definition.input_field_placeholder
+						: undefined,
+					selective: definition.selective,
+				});
 			}
 			if (definition.media) {
 				if (Array.isArray(definition.media)) {

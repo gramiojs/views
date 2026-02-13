@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`@gramio/views` is a view-layer library for [GramIO](https://github.com/gramiojs/gramio) Telegram bots. It provides a builder pattern for defining reusable "views" — composable message templates with text, keyboards, and media — that automatically handle send vs. edit strategies based on the Telegram context (message vs. callback_query). @README.md
+`@gramio/views` is a view-layer library for [GramIO](https://github.com/gramiojs/gramio) https://gramio.dev Telegram bots. It provides a builder pattern for defining reusable "views" — composable message templates with text, keyboards, and media — that automatically handle send vs. edit strategies based on the Telegram context (message vs. callback_query). @README.md
 
 ## Commands
 
@@ -27,7 +27,7 @@ The library has a small, focused design with core modules in `src/`:
 - **`adapters/`** — Adapter system for external view definitions:
     - **`types.ts`** — `ViewAdapter` / `ViewMap` interfaces.
     - **`define.ts`** — `defineAdapter()` — creates an adapter from programmatic view callbacks.
-    - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation. Supports `text`, `keyboard` (inline keyboard rows with button text/callback_data/url interpolation), and `media` (single or array for media groups, with media URL interpolation).
+    - **`json.ts`** — `createJsonAdapter()` — creates an adapter from JSON view definitions with `{{key}}` interpolation. Supports `text`, `keyboard` (inline keyboard rows with button text/callback_data/url interpolation), `reply_keyboard` (reply keyboard with resize/one_time/persistent/placeholder/selective options and button text/request_contact/request_location), and `media` (single or array for media groups, with media URL interpolation). A view cannot have both `keyboard` and `reply_keyboard`.
     - **`fs.ts`** — FS loading helpers:
         - `loadJsonViews(filePath)` — reads a single JSON file containing multiple named view definitions.
         - `loadJsonViewsDir(dirPath)` — recursively reads `.json` files from a directory; subdirectory paths become dot-separated keys (e.g. `goods/things/happens.json` → `"goods.things.happens"`).

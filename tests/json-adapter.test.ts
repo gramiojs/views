@@ -324,6 +324,196 @@ describe("createJsonAdapter", () => {
 		expect(ctx.sendMedia).not.toHaveBeenCalled();
 		expect(ctx.sendMediaGroup).not.toHaveBeenCalled();
 	});
+
+	test("renders reply_keyboard as TelegramReplyKeyboardMarkup", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				menu: {
+					text: "Pick one:",
+					reply_keyboard: [[{ text: "Option A" }, { text: "Option B" }]],
+				},
+			},
+		});
+
+		const view = adapter.resolve("menu");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Pick one:", {
+			reply_markup: {
+				keyboard: [[{ text: "Option A" }, { text: "Option B" }]],
+				resize_keyboard: undefined,
+				one_time_keyboard: undefined,
+				is_persistent: undefined,
+				input_field_placeholder: undefined,
+				selective: undefined,
+			},
+		});
+	});
+
+	test("renders reply_keyboard with all options", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				menu: {
+					text: "Pick:",
+					reply_keyboard: [[{ text: "Go" }]],
+					resize_keyboard: true,
+					one_time_keyboard: true,
+					is_persistent: true,
+					input_field_placeholder: "Choose...",
+					selective: true,
+				},
+			},
+		});
+
+		const view = adapter.resolve("menu");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Pick:", {
+			reply_markup: {
+				keyboard: [[{ text: "Go" }]],
+				resize_keyboard: true,
+				one_time_keyboard: true,
+				is_persistent: true,
+				input_field_placeholder: "Choose...",
+				selective: true,
+			},
+		});
+	});
+
+	test("interpolates reply keyboard button text", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				greet: {
+					text: "Hi",
+					reply_keyboard: [[{ text: "Hello {{name}}" }]],
+				},
+			},
+		});
+
+		const view = adapter.resolve("greet");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [{ name: "Alice" }] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Hi", {
+			reply_markup: {
+				keyboard: [[{ text: "Hello Alice" }]],
+				resize_keyboard: undefined,
+				one_time_keyboard: undefined,
+				is_persistent: undefined,
+				input_field_placeholder: undefined,
+				selective: undefined,
+			},
+		});
+	});
+
+	test("interpolates input_field_placeholder", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				search: {
+					text: "Search",
+					reply_keyboard: [[{ text: "Go" }]],
+					input_field_placeholder: "Search for {{thing}}...",
+				},
+			},
+		});
+
+		const view = adapter.resolve("search");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [
+			{ thing: "products" },
+		] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Search", {
+			reply_markup: {
+				keyboard: [[{ text: "Go" }]],
+				resize_keyboard: undefined,
+				one_time_keyboard: undefined,
+				is_persistent: undefined,
+				input_field_placeholder: "Search for products...",
+				selective: undefined,
+			},
+		});
+	});
+
+	test("passes through request_contact and request_location", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				contact: {
+					text: "Share info",
+					reply_keyboard: [
+						[
+							{ text: "Share Contact", request_contact: true },
+							{ text: "Share Location", request_location: true },
+						],
+					],
+				},
+			},
+		});
+
+		const view = adapter.resolve("contact");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Share info", {
+			reply_markup: {
+				keyboard: [
+					[
+						{ text: "Share Contact", request_contact: true },
+						{ text: "Share Location", request_location: true },
+					],
+				],
+				resize_keyboard: undefined,
+				one_time_keyboard: undefined,
+				is_persistent: undefined,
+				input_field_placeholder: undefined,
+				selective: undefined,
+			},
+		});
+	});
+
+	test("throws if both keyboard and reply_keyboard are set", () => {
+		expect(() =>
+			createJsonAdapter({
+				views: {
+					bad: {
+						text: "Oops",
+						keyboard: [[{ text: "A", callback_data: "a" }]],
+						reply_keyboard: [[{ text: "B" }]],
+					},
+				},
+			}),
+		).toThrow('View "bad" cannot have both "keyboard" and "reply_keyboard"');
+	});
+
+	test("reply_keyboard without params passes through as-is", async () => {
+		const adapter = createJsonAdapter({
+			views: {
+				static: {
+					text: "Menu",
+					reply_keyboard: [
+						[{ text: "Help" }, { text: "Settings" }],
+					],
+				},
+			},
+		});
+
+		const view = adapter.resolve("static");
+		const ctx = createMessageContext();
+		await view.renderWithContext(ctx as any, {}, [] as any);
+
+		expect(ctx.send).toHaveBeenCalledWith("Menu", {
+			reply_markup: {
+				keyboard: [[{ text: "Help" }, { text: "Settings" }]],
+				resize_keyboard: undefined,
+				one_time_keyboard: undefined,
+				is_persistent: undefined,
+				input_field_placeholder: undefined,
+				selective: undefined,
+			},
+		});
+	});
 });
 
 function createMessageContext() {

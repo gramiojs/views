@@ -119,6 +119,39 @@ Media groups use an array:
 
 The `keyboard` field maps to `{ inline_keyboard: [...] }` automatically. Supported media types: `photo`, `video`, `animation`, `audio`, `document`.
 
+### Reply keyboards
+
+JSON views also support reply keyboards via the `reply_keyboard` field:
+
+```json
+{
+    "menu": {
+        "text": "Choose an option:",
+        "reply_keyboard": [
+            [{ "text": "Help" }, { "text": "Settings" }],
+            [{ "text": "Share Contact", "request_contact": true }]
+        ],
+        "resize_keyboard": true,
+        "one_time_keyboard": true
+    }
+}
+```
+
+Available options:
+
+| Field                       | Type      | Description                              |
+| --------------------------- | --------- | ---------------------------------------- |
+| `reply_keyboard`            | `array[]` | Rows of reply keyboard buttons           |
+| `resize_keyboard`           | `boolean` | Shrink keyboard to fit buttons           |
+| `one_time_keyboard`         | `boolean` | Hide keyboard after a button is pressed  |
+| `is_persistent`             | `boolean` | Keep keyboard visible at all times       |
+| `input_field_placeholder`   | `string`  | Placeholder text (supports `{{key}}`)    |
+| `selective`                 | `boolean` | Show keyboard to specific users only     |
+
+Each button supports `text` (with `{{key}}` interpolation), `request_contact`, and `request_location`.
+
+> **Note:** A view cannot have both `keyboard` (inline) and `reply_keyboard` at the same time — an error is thrown if both are set. Reply keyboards are silently ignored when editing messages (Telegram API limitation).
+
 ### Loading JSON views from the filesystem
 
 **Single file** — one JSON file with multiple views:
