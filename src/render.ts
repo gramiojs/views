@@ -1,6 +1,9 @@
-import type { BotLike, ContextType, MaybePromise } from "gramio";
+import type { BotLike, ContextType, MaybePromise, TelegramInputMedia } from "gramio";
 import { ResponseView } from "./response.ts";
+import type { NonEditableMedia } from "./response.ts";
 import { isInlineMarkup, type WithResponseContext } from "./utils.ts";
+
+const NON_EDITABLE_TYPES = new Set<string>(["sticker", "voice", "video_note"]);
 
 const responseKey = "response";
 
@@ -108,11 +111,25 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 		}
 
 		if (hasDesiredMedia) {
+			if (NON_EDITABLE_TYPES.has(media.type)) {
+				// sticker/voice/video_note: media file cannot be changed via Telegram API.
+				// Update only what Telegram allows: caption (voice only) and inline keyboard.
+				const inlineMarkup = isInlineMarkup(keyboard) ? keyboard : undefined;
+				if (media.type === "voice" && text) {
+					await context.editCaption(text, { reply_markup: inlineMarkup });
+				} else if (keyboard) {
+					await context.editReplyMarkup(inlineMarkup);
+				}
+				return;
+			}
+
 			const inlineMarkup = isInlineMarkup(keyboard) ? keyboard : undefined;
+			// Safe cast: NonEditableMedia types are handled and returned above
+			const editableMedia = media as TelegramInputMedia;
 			await context.editMedia(
 				{
-					type: media.type,
-					media: media.media,
+					type: editableMedia.type,
+					media: editableMedia.media,
 					caption: text,
 				},
 				{ reply_markup: inlineMarkup },

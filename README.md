@@ -93,11 +93,11 @@ const albumView = defineView().render(function (ids: string[]) {
 | `audio` | ✅ | |
 | `document` | ✅ | |
 | `animation` | ✅ | GIF |
-| `sticker` | ❌ | Use `ctx.sendSticker()` directly |
-| `voice` | ❌ | Use `ctx.sendVoice()` directly |
-| `video_note` | ❌ | Use `ctx.sendVideoNote()` directly |
+| `sticker` | ✅ | No caption; on edit: `editReplyMarkup` only |
+| `voice` | ✅ | Has caption; on edit: `editCaption` + keyboard |
+| `video_note` | ✅ | No caption; on edit: `editReplyMarkup` only |
 
-The `media` field accepts a **`file_id`** (recommended for already-uploaded files) or a **public URL**. Raw file uploads (Buffer/Stream) are not supported — upload the file first and use the resulting `file_id`.
+The `media` field accepts a **`file_id`** string (recommended for already-uploaded files), a **public URL**, or a **`Blob`** for direct file uploads.
 
 ### `.text()` becomes `caption` with media
 
@@ -120,6 +120,10 @@ When the view is rendered from a `callback_query` (edit strategy):
 | media | text only | deletes message, sends new text |
 | text | text only | `editText` in-place |
 | media group | media group | deletes, sends new media group |
+| sticker | sticker + keyboard | `editReplyMarkup` (media file unchanged) |
+| voice | voice + text | `editCaption` (media file unchanged) |
+| voice | voice + keyboard | `editReplyMarkup` (media file unchanged) |
+| video_note | video_note + keyboard | `editReplyMarkup` (media file unchanged) |
 
 ## Imports
 

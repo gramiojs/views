@@ -24,6 +24,7 @@ function createCallbackQueryContext(overrides?: Record<string, unknown>) {
 		answer: mock(() => Promise.resolve()),
 		send: mock(() => Promise.resolve()),
 		editText: mock(() => Promise.resolve()),
+		editCaption: mock(() => Promise.resolve()),
 		editMedia: mock(() => Promise.resolve()),
 		editReplyMarkup: mock(() => Promise.resolve()),
 		sendMedia: mock(() => Promise.resolve()),
@@ -114,6 +115,51 @@ describe("ViewRender", () => {
 			expect(group[1].caption).toBe("group caption");
 		});
 
+		test("sends sticker", async () => {
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media({ type: "sticker", media: "sticker_file_id" });
+			});
+			const ctx = createMessageContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.sendMedia).toHaveBeenCalledWith({
+				type: "sticker",
+				sticker: "sticker_file_id",
+				caption: undefined,
+				reply_markup: undefined,
+			});
+		});
+
+		test("sends voice with caption", async () => {
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.text("transcription").media({ type: "voice", media: "voice_file_id" });
+			});
+			const ctx = createMessageContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.sendMedia).toHaveBeenCalledWith({
+				type: "voice",
+				voice: "voice_file_id",
+				caption: "transcription",
+				reply_markup: undefined,
+			});
+		});
+
+		test("sends video_note", async () => {
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media({ type: "video_note", media: "vnote_file_id" });
+			});
+			const ctx = createMessageContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.sendMedia).toHaveBeenCalledWith({
+				type: "video_note",
+				video_note: "vnote_file_id",
+				caption: undefined,
+				reply_markup: undefined,
+			});
+		});
+
 		test("does nothing when response is empty", async () => {
 			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
 				return this.response;
@@ -174,6 +220,61 @@ describe("ViewRender", () => {
 			await view.renderWithContext(ctx, {}, []);
 
 			expect(ctx.editReplyMarkup).toHaveBeenCalledWith(kb);
+		});
+
+		test("edits sticker reply markup via editReplyMarkup", async () => {
+			const kb = { inline_keyboard: [[{ text: "like", callback_data: "like" }]] };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media({ type: "sticker", media: "sticker_file_id" }).keyboard(kb);
+			});
+			const ctx = createCallbackQueryContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.editReplyMarkup).toHaveBeenCalledWith(kb);
+			expect(ctx.editMedia).not.toHaveBeenCalled();
+			expect(ctx.message.delete).not.toHaveBeenCalled();
+		});
+
+		test("edits voice caption via editCaption", async () => {
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.text("new caption").media({ type: "voice", media: "voice_file_id" });
+			});
+			const ctx = createCallbackQueryContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.editCaption).toHaveBeenCalledWith("new caption", {
+				reply_markup: undefined,
+			});
+			expect(ctx.editMedia).not.toHaveBeenCalled();
+			expect(ctx.message.delete).not.toHaveBeenCalled();
+		});
+
+		test("edits voice caption and keyboard together", async () => {
+			const kb = { inline_keyboard: [[{ text: "play", callback_data: "play" }]] };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response
+					.text("transcript")
+					.media({ type: "voice", media: "voice_file_id" })
+					.keyboard(kb);
+			});
+			const ctx = createCallbackQueryContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.editCaption).toHaveBeenCalledWith("transcript", { reply_markup: kb });
+			expect(ctx.editMedia).not.toHaveBeenCalled();
+		});
+
+		test("edits video_note reply markup via editReplyMarkup", async () => {
+			const kb = { inline_keyboard: [[{ text: "ok", callback_data: "ok" }]] };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media({ type: "video_note", media: "vnote_file_id" }).keyboard(kb);
+			});
+			const ctx = createCallbackQueryContext();
+			await view.renderWithContext(ctx, {}, []);
+
+			expect(ctx.editReplyMarkup).toHaveBeenCalledWith(kb);
+			expect(ctx.editMedia).not.toHaveBeenCalled();
+			expect(ctx.message.delete).not.toHaveBeenCalled();
 		});
 
 		test("deletes and re-sends for media group edit", async () => {

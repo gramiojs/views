@@ -15,7 +15,7 @@ export interface JsonReplyKeyboardButton {
 }
 
 export interface JsonMediaDefinition {
-	type: "photo" | "video" | "animation" | "audio" | "document";
+	type: "photo" | "video" | "animation" | "audio" | "document" | "sticker" | "voice" | "video_note";
 	media: string;
 }
 
