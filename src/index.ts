@@ -30,7 +30,6 @@ export function initViewsBuilder<
 			return viewRender.renderWithContext(context, globals, args, "send");
 		};
 
-		// @ts-expect-error
 		render.edit = (viewRender, ...args) => {
 			// @ts-expect-error
 			return viewRender.renderWithContext(context, globals, args, "edit");

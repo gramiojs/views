@@ -5,7 +5,7 @@ import type {
 	TelegramInlineKeyboardMarkup,
 } from "gramio";
 import type { ViewAdapter, ViewMap } from "./adapters/types.ts";
-import type { ViewRender } from "./render.ts";
+import type { RenderResult, RenderSendResult, ViewRender } from "./render.ts";
 import type { ResponseView } from "./response.ts";
 import type { ViewBuilder } from "./view.ts";
 
@@ -15,14 +15,6 @@ export type WithResponseContext<T> = T & {
 
 export type ExtractViewArgs<View extends ViewRender<any, any>> =
 	View extends ViewRender<any, infer Args> ? Args : never;
-
-export type RenderFunction = <
-	View extends ViewRender<any, any>,
-	Args extends any[] = ExtractViewArgs<View>,
->(
-	view: View,
-	...args: Args
-) => void;
 
 export interface InitViewsBuilderReturn<Globals extends object> {
 	(): ViewBuilder<Globals>;
@@ -40,19 +32,17 @@ export interface InitViewsBuilderReturn<Globals extends object> {
 		<View extends ViewRender<any, any>>(
 			view: View,
 			...args: ExtractViewArgs<View>
-		): Promise<void>;
+		): Promise<RenderResult>;
 
 		send: <View extends ViewRender<any, any>>(
 			view: View,
 			...args: ExtractViewArgs<View>
-		) => Promise<ContextType<BotLike, "message">>;
+		) => Promise<RenderSendResult | undefined>;
 
 		edit: <View extends ViewRender<any, any>>(
 			view: View,
 			...args: ExtractViewArgs<View>
-		) => Promise<
-			ReturnType<ContextType<BotLike, "callback_query">["editText"]>
-		>;
+		) => Promise<RenderResult>;
 	};
 }
 
@@ -76,32 +66,32 @@ export type AdapterRenderFunction<Globals extends object, M extends ViewMap> = {
 	<View extends ViewRender<any, any>>(
 		view: View,
 		...args: ExtractViewArgs<View>
-	): Promise<void>;
+	): Promise<RenderResult>;
 	<K extends keyof M & string>(
 		key: K,
 		...args: M[K] extends void ? [] : [M[K]]
-	): Promise<void>;
+	): Promise<RenderResult>;
 
 	send: {
 		<View extends ViewRender<any, any>>(
 			view: View,
 			...args: ExtractViewArgs<View>
-		): Promise<ContextType<BotLike, "message">>;
+		): Promise<RenderSendResult | undefined>;
 		<K extends keyof M & string>(
 			key: K,
 			...args: M[K] extends void ? [] : [M[K]]
-		): Promise<ContextType<BotLike, "message">>;
+		): Promise<RenderSendResult | undefined>;
 	};
 
 	edit: {
 		<View extends ViewRender<any, any>>(
 			view: View,
 			...args: ExtractViewArgs<View>
-		): Promise<ReturnType<ContextType<BotLike, "callback_query">["editText"]>>;
+		): Promise<RenderResult>;
 		<K extends keyof M & string>(
 			key: K,
 			...args: M[K] extends void ? [] : [M[K]]
-		): Promise<ReturnType<ContextType<BotLike, "callback_query">["editText"]>>;
+		): Promise<RenderResult>;
 	};
 };
 

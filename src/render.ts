@@ -1,4 +1,4 @@
-import type { BotLike, ContextType, MaybePromise, TelegramInputMedia } from "gramio";
+import type { BotLike, ContextType, MaybePromise, MessageContext, TelegramInputMedia } from "gramio";
 import { ResponseView } from "./response.ts";
 import type { NonEditableMedia } from "./response.ts";
 import { isInlineMarkup, type WithResponseContext } from "./utils.ts";
@@ -6,6 +6,11 @@ import { isInlineMarkup, type WithResponseContext } from "./utils.ts";
 const NON_EDITABLE_TYPES = new Set<string>(["sticker", "voice", "video_note"]);
 
 const responseKey = "response";
+
+export type RenderSendResult = MessageContext<BotLike> | MessageContext<BotLike>[];
+// Derive edit result from gramio's actual method signature to stay in sync automatically
+type EditResult = Awaited<ReturnType<ContextType<BotLike, "callback_query">["editText"]>>;
+export type RenderResult = RenderSendResult | EditResult | undefined;
 
 export class ViewRender<Globals extends object, Args extends any[]> {
 	constructor(
@@ -20,7 +25,7 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 		globals: Globals,
 		args: Args,
 		strategyRaw?: "send" | "edit",
-	) {
+	): Promise<RenderResult> {
 		const contextData = this.createContext(globals);
 		const result = await this.render.apply(contextData, args);
 		const response = result[responseKey];
@@ -29,19 +34,23 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 		const strategy: "send" | "edit" =
 			strategyRaw === "send" ? "send" : canEdit ? "edit" : "send";
 
+		let renderResult: RenderResult;
+
 		if (
 			strategy === "edit" &&
 			context.is("callback_query") &&
 			context.message
 		) {
-			await this.performEdit(context, response);
+			renderResult = await this.performEdit(context, response);
 		} else {
-			await this.performSend(context, response);
+			renderResult = await this.performSend(context, response);
 		}
 
 		if (context.is("callback_query")) {
 			await context.answer();
 		}
+
+		return renderResult;
 	}
 
 	private createContext(globals: Globals): WithResponseContext<Globals> {
@@ -54,7 +63,7 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 	private async performSend(
 		context: ContextType<BotLike, "message" | "callback_query">,
 		response: ResponseView["response"],
-	) {
+	): Promise<RenderSendResult | undefined> {
 		const { text, keyboard, media } = response;
 
 		if (Array.isArray(media) && media.length > 1) {
@@ -62,29 +71,31 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 			if (lastMedia && text) {
 				lastMedia.caption = text;
 			}
-			await context.sendMediaGroup(media);
+			return context.sendMediaGroup(media);
 		} else if (media) {
 			const singleMedia = Array.isArray(media) ? media[0] : media;
-			// @ts-expect-error
-			await context.sendMedia({
+			// @ts-expect-error — dynamic [type] key is valid for sendMedia but not statically verifiable
+			return context.sendMedia({
 				type: singleMedia.type,
 				[singleMedia.type]: singleMedia.media,
 				caption: text,
 				reply_markup: keyboard,
 			});
 		} else if (text) {
-			await context.send(text, { reply_markup: keyboard });
+			return context.send(text, { reply_markup: keyboard });
 		}
+
+		return undefined;
 	}
 
 	private async performEdit(
 		context: ContextType<BotLike, "callback_query">,
 		response: ResponseView["response"],
-	) {
+	): Promise<RenderResult> {
 		const { text, keyboard, media } = response;
 
 		if (!context.hasMessage()) {
-			return;
+			return undefined;
 		}
 
 		if (Array.isArray(media)) {
@@ -92,22 +103,22 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 			if (lastMedia && text) {
 				lastMedia.caption = text;
 			}
-			await Promise.all([
+			const [, result] = await Promise.all([
 				context.message.delete(),
 				context.sendMediaGroup(media),
 			]);
-			return;
+			return result;
 		}
 
 		const hasCurrentMedia = context.message.hasAttachment();
 		const hasDesiredMedia = !!media;
 
 		if (hasCurrentMedia && !hasDesiredMedia && text) {
-			await Promise.all([
+			const [, result] = await Promise.all([
 				context.message.delete(),
 				context.send(text, { reply_markup: keyboard }),
 			]);
-			return;
+			return result;
 		}
 
 		if (hasDesiredMedia) {
@@ -116,17 +127,17 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 				// Update only what Telegram allows: caption (voice only) and inline keyboard.
 				const inlineMarkup = isInlineMarkup(keyboard) ? keyboard : undefined;
 				if (media.type === "voice" && text) {
-					await context.editCaption(text, { reply_markup: inlineMarkup });
+					return context.editCaption(text, { reply_markup: inlineMarkup });
 				} else if (keyboard) {
-					await context.editReplyMarkup(inlineMarkup);
+					return context.editReplyMarkup(inlineMarkup);
 				}
-				return;
+				return undefined;
 			}
 
 			const inlineMarkup = isInlineMarkup(keyboard) ? keyboard : undefined;
 			// Safe cast: NonEditableMedia types are handled and returned above
 			const editableMedia = media as TelegramInputMedia;
-			await context.editMedia(
+			return context.editMedia(
 				{
 					type: editableMedia.type,
 					media: editableMedia.media,
@@ -134,19 +145,18 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 				},
 				{ reply_markup: inlineMarkup },
 			);
-			return;
 		}
 
 		if (!hasCurrentMedia && text) {
 			const inlineMarkup = isInlineMarkup(keyboard) ? keyboard : undefined;
-			await context.editText(text, { reply_markup: inlineMarkup });
-			return;
+			return context.editText(text, { reply_markup: inlineMarkup });
 		}
 
 		if (keyboard && !text && !media) {
 			const inlineMarkup = isInlineMarkup(keyboard) ? keyboard : undefined;
-			await context.editReplyMarkup(inlineMarkup);
-			return;
+			return context.editReplyMarkup(inlineMarkup);
 		}
+
+		return undefined;
 	}
 }
