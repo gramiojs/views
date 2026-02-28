@@ -425,11 +425,11 @@ describe("ViewRender", () => {
 				return this.response.text("hello");
 			});
 			const ctx = createMessageContext();
-			ctx.send = mock(() => Promise.resolve(mockMessage));
+			ctx.send = mock(() => Promise.resolve(mockMessage as any)); // partial mock
 
 			const result = await view.renderWithContext(ctx, {}, []);
 
-			expect(result).toBe(mockMessage);
+			expect(result).toBe(mockMessage as any);
 		});
 
 		test("returns MessageContext from sendMedia()", async () => {
@@ -438,11 +438,11 @@ describe("ViewRender", () => {
 				return this.response.media({ type: "photo", media: "file_id" });
 			});
 			const ctx = createMessageContext();
-			ctx.sendMedia = mock(() => Promise.resolve(mockMessage));
+			ctx.sendMedia = mock(() => Promise.resolve(mockMessage as any)); // partial mock
 
 			const result = await view.renderWithContext(ctx, {}, []);
 
-			expect(result).toBe(mockMessage);
+			expect(result).toBe(mockMessage as any);
 		});
 
 		test("returns MessageContext[] from sendMediaGroup()", async () => {
@@ -454,11 +454,11 @@ describe("ViewRender", () => {
 				]);
 			});
 			const ctx = createMessageContext();
-			ctx.sendMediaGroup = mock(() => Promise.resolve(mockMessages));
+			ctx.sendMediaGroup = mock(() => Promise.resolve(mockMessages as any)); // partial mock
 
 			const result = await view.renderWithContext(ctx, {}, []);
 
-			expect(result).toBe(mockMessages);
+			expect(result).toBe(mockMessages as any);
 		});
 
 		test("returns result from editText()", async () => {
@@ -467,11 +467,11 @@ describe("ViewRender", () => {
 				return this.response.text("edited");
 			});
 			const ctx = createCallbackQueryContext();
-			ctx.editText = mock(() => Promise.resolve(mockResult));
+			ctx.editText = mock(() => Promise.resolve(mockResult as any)); // partial mock
 
 			const result = await view.renderWithContext(ctx, {}, []);
 
-			expect(result).toBe(mockResult);
+			expect(result).toBe(mockResult as any);
 		});
 
 		test("returns result from editMedia()", async () => {
@@ -480,11 +480,11 @@ describe("ViewRender", () => {
 				return this.response.media({ type: "photo", media: "file_id" });
 			});
 			const ctx = createCallbackQueryContext();
-			ctx.editMedia = mock(() => Promise.resolve(mockResult));
+			ctx.editMedia = mock(() => Promise.resolve(mockResult as any)); // partial mock
 
 			const result = await view.renderWithContext(ctx, {}, []);
 
-			expect(result).toBe(mockResult);
+			expect(result).toBe(mockResult as any);
 		});
 
 		test("returns undefined when response is empty", async () => {
