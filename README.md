@@ -58,6 +58,69 @@ const bot = new Bot(process.env.BOT_TOKEN!)
 bot.start();
 ```
 
+## Media
+
+The `.media()` method on `ResponseView` lets you attach media to a view — either a single item or a group.
+
+```ts
+import { InlineKeyboard } from "gramio";
+import { initViewsBuilder } from "@gramio/views";
+
+const defineView = initViewsBuilder<{ fileId: string }>();
+
+// Single photo with caption and keyboard
+const photoView = defineView().render(function () {
+    return this.response
+        .media({ type: "photo", media: this.fileId })
+        .text("Here is your photo!")
+        .keyboard(new InlineKeyboard().text("Like", "like"));
+});
+
+// Media group (album)
+const albumView = defineView().render(function (ids: string[]) {
+    return this.response
+        .media(ids.map((id) => ({ type: "photo" as const, media: id })))
+        .text("Your album"); // caption goes on the last item
+});
+```
+
+### Supported media types
+
+| Type | `.media({ type })` | Notes |
+|---|---|---|
+| `photo` | ✅ | |
+| `video` | ✅ | |
+| `audio` | ✅ | |
+| `document` | ✅ | |
+| `animation` | ✅ | GIF |
+| `sticker` | ❌ | Use `ctx.sendSticker()` directly |
+| `voice` | ❌ | Use `ctx.sendVoice()` directly |
+| `video_note` | ❌ | Use `ctx.sendVideoNote()` directly |
+
+The `media` field accepts a **`file_id`** (recommended for already-uploaded files) or a **public URL**. Raw file uploads (Buffer/Stream) are not supported — upload the file first and use the resulting `file_id`.
+
+### `.text()` becomes `caption` with media
+
+When `.media()` is set, `.text()` is used as the `caption` (up to 1024 characters). Without media, `.text()` sends a regular text message (up to 4096 characters).
+
+### Keyboards with media
+
+- **Single media + send** — both `InlineKeyboard` and `ReplyKeyboard` work.
+- **Single media + edit** (`callback_query`) — only `InlineKeyboard` is supported by Telegram. `ReplyKeyboard` is silently ignored.
+- **Media group** — keyboards are not supported by Telegram for media groups.
+
+### Edit behavior
+
+When the view is rendered from a `callback_query` (edit strategy):
+
+| Current message | View has | Result |
+|---|---|---|
+| text | single media | `editMedia` replaces it |
+| media | single media | `editMedia` replaces it |
+| media | text only | deletes message, sends new text |
+| text | text only | `editText` in-place |
+| media group | media group | deletes, sends new media group |
+
 ## Imports
 
 The library uses modular imports to avoid bundling unnecessary dependencies:
