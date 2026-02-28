@@ -417,4 +417,85 @@ describe("ViewRender", () => {
 			});
 		});
 	});
+
+	describe("return values", () => {
+		test("returns MessageContext from send()", async () => {
+			const mockMessage = { message_id: 42, chat: { id: 1 } };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.text("hello");
+			});
+			const ctx = createMessageContext();
+			ctx.send = mock(() => Promise.resolve(mockMessage));
+
+			const result = await view.renderWithContext(ctx, {}, []);
+
+			expect(result).toBe(mockMessage);
+		});
+
+		test("returns MessageContext from sendMedia()", async () => {
+			const mockMessage = { message_id: 7, chat: { id: 1 } };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media({ type: "photo", media: "file_id" });
+			});
+			const ctx = createMessageContext();
+			ctx.sendMedia = mock(() => Promise.resolve(mockMessage));
+
+			const result = await view.renderWithContext(ctx, {}, []);
+
+			expect(result).toBe(mockMessage);
+		});
+
+		test("returns MessageContext[] from sendMediaGroup()", async () => {
+			const mockMessages = [{ message_id: 1 }, { message_id: 2 }];
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media([
+					{ type: "photo" as const, media: "f1" },
+					{ type: "photo" as const, media: "f2" },
+				]);
+			});
+			const ctx = createMessageContext();
+			ctx.sendMediaGroup = mock(() => Promise.resolve(mockMessages));
+
+			const result = await view.renderWithContext(ctx, {}, []);
+
+			expect(result).toBe(mockMessages);
+		});
+
+		test("returns result from editText()", async () => {
+			const mockResult = { message_id: 99 };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.text("edited");
+			});
+			const ctx = createCallbackQueryContext();
+			ctx.editText = mock(() => Promise.resolve(mockResult));
+
+			const result = await view.renderWithContext(ctx, {}, []);
+
+			expect(result).toBe(mockResult);
+		});
+
+		test("returns result from editMedia()", async () => {
+			const mockResult = { message_id: 55 };
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response.media({ type: "photo", media: "file_id" });
+			});
+			const ctx = createCallbackQueryContext();
+			ctx.editMedia = mock(() => Promise.resolve(mockResult));
+
+			const result = await view.renderWithContext(ctx, {}, []);
+
+			expect(result).toBe(mockResult);
+		});
+
+		test("returns undefined when response is empty", async () => {
+			const view = new ViewRender<{}, []>(function (this: WithResponseContext<{}>) {
+				return this.response;
+			});
+			const ctx = createMessageContext();
+
+			const result = await view.renderWithContext(ctx, {}, []);
+
+			expect(result).toBeUndefined();
+		});
+	});
 });
