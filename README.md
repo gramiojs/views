@@ -80,17 +80,40 @@ The plain-object form still works unchanged for globals that never mutate.
 
 ### Mixing static + lazy with getters
 
-For a mix of fixed and live values, pass a plain object with **property getters** — getters are invoked per render, so live values stay fresh alongside captured-once fields:
+For a mix of fixed and live values, pass a plain object with **property getters**. Each getter fires per render, so live values stay fresh alongside fields captured once. No extra configuration — this is just how the `this` context is built on every render.
 
 ```ts
-defineView.buildRender(context, {
-    user: context.from,                                  // captured once
-    get onboarding() { return context.onboarding?.welcome.snapshot; }, // re-read per render
-    get locale() { return context.session.locale; },     // re-read per render
+bot.derive(["message", "callback_query"], (context) => ({
+    render: defineView.buildRender(context, {
+        // static — evaluated once at .derive() time
+        userId: context.from.id,
+        chatId: context.chat.id,
+
+        // lazy — re-read on every render via getters
+        get locale() {
+            return context.session.locale;
+        },
+        get onboarding() {
+            return context.onboarding?.welcome.snapshot;
+        },
+        get role() {
+            return context.session.role;
+        },
+    }),
+}));
+```
+
+Inside a view, accesses like `this.locale` or `this.onboarding` always see the current value — even if middleware mutated `context.session` or advanced onboarding between renders:
+
+```ts
+const profileView = defineView().render(function () {
+    return this.response.text(
+        `[${this.locale}] user #${this.userId}, role=${this.role}`,
+    );
 });
 ```
 
-This works because the view's `this` context is built per render — getters fire each time and their return values land on `this`.
+Pick whichever style fits the call site — thunk `() => ({...})` for "everything is live", getters for "most is static, a couple of fields need to stay fresh". Both are resolved per render.
 
 ## Media
 
