@@ -521,4 +521,173 @@ describe("lazy globals (thunk form)", () => {
 			reply_markup: undefined,
 		});
 	});
+
+	test("mix static + lazy via property getters on a plain object", async () => {
+		// createContext uses object spread, which evaluates getters and
+		// copies their return values onto contextData — per render.
+		// So mixing static props with getter-based lazy props works out of the box.
+		type Globals = { userId: number; onboarding: string };
+		const defineView = initViewsBuilder<Globals>();
+		const view = defineView().render(function () {
+			return this.response.text(`${this.userId}:${this.onboarding}`);
+		});
+
+		const fakeCtx = { onboarding: { step: "intro" } };
+		const ctx = createMessageContext();
+		const render = defineView.buildRender(ctx, {
+			userId: 42,
+			get onboarding() {
+				return fakeCtx.onboarding.step;
+			},
+		});
+
+		await render(view);
+		fakeCtx.onboarding.step = "done";
+		await render(view);
+
+		expect(ctx.send).toHaveBeenNthCalledWith(1, "42:intro", {
+			reply_markup: undefined,
+		});
+		expect(ctx.send).toHaveBeenNthCalledWith(2, "42:done", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("realistic .derive() pattern: session mutation mid-handler", async () => {
+		// Simulates the real production flow:
+		//   bot.derive(["message", "callback_query"], (ctx) => ({
+		//     render: defineView.buildRender(ctx, () => ({
+		//       user: ctx.from,
+		//       session: ctx.session,
+		//       onboarding: ctx.onboarding?.welcome.snapshot,
+		//     })),
+		//   }))
+		// Middleware between two renders mutates ctx.session / ctx.onboarding —
+		// the second render must see the new state, not the one captured at derive().
+		type User = { id: number; name: string };
+		type Session = { locale: string; visits: number };
+		type OnboardingSnapshot = { step: string; status: "active" | "done" };
+		type Globals = {
+			user: User;
+			session: Session;
+			onboarding: OnboardingSnapshot;
+		};
+
+		// Simulated per-update context object (what GramIO would pass to .derive())
+		const fakeCtx = {
+			from: { id: 1, name: "Alice" } as User,
+			session: { locale: "en", visits: 1 } as Session,
+			onboarding: { step: "intro", status: "active" } as OnboardingSnapshot,
+			advanceOnboarding() {
+				this.onboarding = { step: "profile", status: "active" };
+			},
+			finishOnboarding() {
+				this.onboarding = { step: "profile", status: "done" };
+			},
+		};
+
+		const defineView = initViewsBuilder<Globals>();
+		const greetView = defineView().render(function () {
+			return this.response.text(
+				`[${this.session.locale}] ${this.user.name} step=${this.onboarding.step}/${this.onboarding.status} visits=${this.session.visits}`,
+			);
+		});
+
+		const telegramCtx = createMessageContext();
+
+		// Exactly what a user would write inside bot.derive():
+		const deriveResult = {
+			render: defineView.buildRender(telegramCtx, () => ({
+				user: fakeCtx.from,
+				session: fakeCtx.session,
+				onboarding: fakeCtx.onboarding,
+			})),
+		};
+
+		// 1st render: initial state
+		await deriveResult.render(greetView);
+
+		// Middleware advances onboarding and bumps visits
+		fakeCtx.advanceOnboarding();
+		fakeCtx.session.visits = 2;
+
+		// 2nd render: must reflect advanced state
+		await deriveResult.render(greetView);
+
+		// Another step: locale switch mid-handler + onboarding finish
+		fakeCtx.session.locale = "ru";
+		fakeCtx.finishOnboarding();
+
+		// 3rd render: must reflect locale + completion
+		await deriveResult.render(greetView);
+
+		expect(telegramCtx.send).toHaveBeenNthCalledWith(
+			1,
+			"[en] Alice step=intro/active visits=1",
+			{ reply_markup: undefined },
+		);
+		expect(telegramCtx.send).toHaveBeenNthCalledWith(
+			2,
+			"[en] Alice step=profile/active visits=2",
+			{ reply_markup: undefined },
+		);
+		expect(telegramCtx.send).toHaveBeenNthCalledWith(
+			3,
+			"[ru] Alice step=profile/done visits=2",
+			{ reply_markup: undefined },
+		);
+	});
+
+	test("realistic .derive() pattern: i18n locale flip flips adapter", async () => {
+		// Real-world: user issues /lang ru mid-session. Middleware updates
+		// ctx.session.locale. Subsequent views must render in Russian without
+		// rebuilding the render function.
+		type Globals = { locale: string; name: string };
+		type ViewMap = { greet: void };
+		const defineView = initViewsBuilder<Globals>();
+
+		const adapters: Record<
+			string,
+			ReturnType<typeof createJsonAdapter<Globals, ViewMap>>
+		> = {
+			en: createJsonAdapter<Globals, ViewMap>({
+				views: { greet: { text: "Hello, {{$name}}!" } },
+			}),
+			ru: createJsonAdapter<Globals, ViewMap>({
+				views: { greet: { text: "Привет, {{$name}}!" } },
+			}),
+		};
+		const withAdapter = defineView.from(
+			(globals: Globals) => adapters[globals.locale],
+		);
+
+		const fakeCtx = {
+			from: { name: "Alice" },
+			session: { locale: "en" },
+		};
+		const telegramCtx = createMessageContext();
+
+		const { render } = {
+			render: withAdapter.buildRender(telegramCtx, () => ({
+				locale: fakeCtx.session.locale,
+				name: fakeCtx.from.name,
+			})),
+		};
+
+		await render("greet");
+		fakeCtx.session.locale = "ru"; // /lang ru middleware
+		await render("greet");
+		fakeCtx.session.locale = "en"; // /lang en middleware
+		await render("greet");
+
+		expect(telegramCtx.send).toHaveBeenNthCalledWith(1, "Hello, Alice!", {
+			reply_markup: undefined,
+		});
+		expect(telegramCtx.send).toHaveBeenNthCalledWith(2, "Привет, Alice!", {
+			reply_markup: undefined,
+		});
+		expect(telegramCtx.send).toHaveBeenNthCalledWith(3, "Hello, Alice!", {
+			reply_markup: undefined,
+		});
+	});
 });

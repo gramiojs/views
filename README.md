@@ -78,6 +78,20 @@ If you use an adapter factory (`initViewsBuilder<G>().from(g => adapter)`), the 
 
 The plain-object form still works unchanged for globals that never mutate.
 
+### Mixing static + lazy with getters
+
+For a mix of fixed and live values, pass a plain object with **property getters** — getters are invoked per render, so live values stay fresh alongside captured-once fields:
+
+```ts
+defineView.buildRender(context, {
+    user: context.from,                                  // captured once
+    get onboarding() { return context.onboarding?.welcome.snapshot; }, // re-read per render
+    get locale() { return context.session.locale; },     // re-read per render
+});
+```
+
+This works because the view's `this` context is built per render — getters fire each time and their return values land on `this`.
+
 ## Media
 
 The `.media()` method on `ResponseView` lets you attach media to a view — either a single item or a group.
