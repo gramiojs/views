@@ -15,6 +15,7 @@
 		"@biomejs/biome": "^2.1.1",
 		"@gramio/test": "^0.3.1",
 		"@types/bun": "^1.2.18",
+		"@types/node": "^24.0.13",
 		"gramio": "^0.6.1",
 		"pkgroll": "^2.14.1",
 		"typescript": "^5.8.3"
