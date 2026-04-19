@@ -1,8 +1,6 @@
-import type { Context } from "gramio";
 import { describe, expect, mock, test } from "bun:test";
 import { createJsonAdapter } from "../src/adapters/json.ts";
 import { initViewsBuilder } from "../src/index.ts";
-import { ViewRender } from "../src/render.ts";
 import { ViewBuilder } from "../src/view.ts";
 
 function createMessageContext() {
@@ -237,7 +235,7 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		const adapter = createJsonAdapter<Globals, ViewMap>({
 			views: { welcome: { text: "Hello!" } },
 		});
-		const factory = (globals: Globals) => adapter;
+		const factory = (_globals: Globals) => adapter;
 		const result = defineView.from(factory);
 
 		expect(result.adapter).toBe(factory);
@@ -249,7 +247,10 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		type ViewMap = { greet: void };
 		const defineView = initViewsBuilder<Globals>();
 
-		const adapters: Record<string, ReturnType<typeof createJsonAdapter<Globals, ViewMap>>> = {
+		const adapters: Record<
+			string,
+			ReturnType<typeof createJsonAdapter<Globals, ViewMap>>
+		> = {
 			en: createJsonAdapter<Globals, ViewMap>({
 				views: { greet: { text: "Hello!" } },
 			}),
@@ -281,7 +282,10 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		type ViewMap = { msg: void };
 		const defineView = initViewsBuilder<Globals>();
 
-		const adapters: Record<string, ReturnType<typeof createJsonAdapter<Globals, ViewMap>>> = {
+		const adapters: Record<
+			string,
+			ReturnType<typeof createJsonAdapter<Globals, ViewMap>>
+		> = {
 			en: createJsonAdapter<Globals, ViewMap>({
 				views: { msg: { text: "English" } },
 			}),
@@ -320,9 +324,7 @@ describe("initViewsBuilder.from() with adapter factory", () => {
 		const adapter = createJsonAdapter<Globals, ViewMap>({
 			views: { json: { text: "from adapter" } },
 		});
-		const withAdapter = defineView.from(
-			(_globals: Globals) => adapter,
-		);
+		const withAdapter = defineView.from((_globals: Globals) => adapter);
 
 		const customView = withAdapter().render(function () {
 			return this.response.text("from code");
@@ -350,6 +352,172 @@ describe("globals flow", () => {
 
 		await render(view);
 		expect(ctx.send).toHaveBeenCalledWith("Locale: en", {
+			reply_markup: undefined,
+		});
+	});
+});
+
+describe("lazy globals (thunk form)", () => {
+	test("thunk is called per render, not per buildRender", async () => {
+		type Globals = { counter: number };
+		const defineView = initViewsBuilder<Globals>();
+		const view = defineView().render(function () {
+			return this.response.text(`n=${this.counter}`);
+		});
+
+		let counter = 0;
+		const thunk = mock(() => ({ counter: ++counter }));
+
+		const ctx = createMessageContext();
+		const render = defineView.buildRender(ctx, thunk);
+
+		expect(thunk).not.toHaveBeenCalled();
+
+		await render(view);
+		await render(view);
+		await render(view);
+
+		expect(thunk).toHaveBeenCalledTimes(3);
+		expect(ctx.send).toHaveBeenNthCalledWith(1, "n=1", {
+			reply_markup: undefined,
+		});
+		expect(ctx.send).toHaveBeenNthCalledWith(2, "n=2", {
+			reply_markup: undefined,
+		});
+		expect(ctx.send).toHaveBeenNthCalledWith(3, "n=3", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("thunk picks up state mutated between renders", async () => {
+		type Globals = { locale: string };
+		const defineView = initViewsBuilder<Globals>();
+		const view = defineView().render(function () {
+			return this.response.text(`lang=${this.locale}`);
+		});
+
+		const state = { locale: "en" };
+		const ctx = createMessageContext();
+		const render = defineView.buildRender(ctx, () => ({
+			locale: state.locale,
+		}));
+
+		await render(view);
+		state.locale = "ru";
+		await render(view);
+
+		expect(ctx.send).toHaveBeenNthCalledWith(1, "lang=en", {
+			reply_markup: undefined,
+		});
+		expect(ctx.send).toHaveBeenNthCalledWith(2, "lang=ru", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("render.send and render.edit resolve thunk", async () => {
+		type Globals = { v: string };
+		const defineView = initViewsBuilder<Globals>();
+		const view = defineView().render(function () {
+			return this.response.text(this.v);
+		});
+
+		const state = { v: "first" };
+		const ctx = createCallbackQueryContext();
+		const render = defineView.buildRender(ctx, () => ({ v: state.v }));
+
+		await render.send(view);
+		state.v = "second";
+		await render.edit(view);
+
+		expect(ctx.send).toHaveBeenCalledWith("first", {
+			reply_markup: undefined,
+		});
+		expect(ctx.editText).toHaveBeenCalledWith("second", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("adapter factory receives freshly resolved globals per render", async () => {
+		type Globals = { locale: string };
+		type ViewMap = { greet: void };
+		const defineView = initViewsBuilder<Globals>();
+
+		const adapters: Record<
+			string,
+			ReturnType<typeof createJsonAdapter<Globals, ViewMap>>
+		> = {
+			en: createJsonAdapter<Globals, ViewMap>({
+				views: { greet: { text: "Hello!" } },
+			}),
+			ru: createJsonAdapter<Globals, ViewMap>({
+				views: { greet: { text: "Привет!" } },
+			}),
+		};
+
+		const factory = mock((globals: Globals) => adapters[globals.locale]);
+		const withAdapter = defineView.from(factory);
+
+		const state = { locale: "en" };
+		const ctx = createMessageContext();
+		const render = withAdapter.buildRender(ctx, () => ({
+			locale: state.locale,
+		}));
+
+		await render("greet");
+		state.locale = "ru";
+		await render("greet");
+
+		expect(factory).toHaveBeenCalledTimes(2);
+		expect(ctx.send).toHaveBeenNthCalledWith(1, "Hello!", {
+			reply_markup: undefined,
+		});
+		expect(ctx.send).toHaveBeenNthCalledWith(2, "Привет!", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("adapter string-key + ViewRender paths both resolve thunk", async () => {
+		type Globals = { prefix: string };
+		type ViewMap = { j: void };
+		const defineView = initViewsBuilder<Globals>();
+
+		const adapter = createJsonAdapter<Globals, ViewMap>({
+			views: { j: { text: "{{$prefix}}-json" } },
+		});
+		const withAdapter = defineView.from(adapter);
+		const codeView = withAdapter().render(function () {
+			return this.response.text(`${this.prefix}-code`);
+		});
+
+		const state = { prefix: "A" };
+		const ctx = createMessageContext();
+		const render = withAdapter.buildRender(ctx, () => ({
+			prefix: state.prefix,
+		}));
+
+		await render("j");
+		state.prefix = "B";
+		await render(codeView);
+
+		expect(ctx.send).toHaveBeenNthCalledWith(1, "A-json", {
+			reply_markup: undefined,
+		});
+		expect(ctx.send).toHaveBeenNthCalledWith(2, "B-code", {
+			reply_markup: undefined,
+		});
+	});
+
+	test("static object form still works (back-compat)", async () => {
+		type Globals = { v: string };
+		const defineView = initViewsBuilder<Globals>();
+		const view = defineView().render(function () {
+			return this.response.text(this.v);
+		});
+		const ctx = createMessageContext();
+		const render = defineView.buildRender(ctx, { v: "static" });
+
+		await render(view);
+		expect(ctx.send).toHaveBeenCalledWith("static", {
 			reply_markup: undefined,
 		});
 	});

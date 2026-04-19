@@ -58,6 +58,26 @@ const bot = new Bot(process.env.BOT_TOKEN!)
 bot.start();
 ```
 
+## Dynamic globals (lazy)
+
+`buildRender` accepts either a plain object **or a function** `() => Globals`. When you pass a function, it is called **once per render** — so values that mutate between renders (session data, scene state, i18n locale, onboarding snapshot, role after escalation, etc.) stay fresh.
+
+```ts
+bot.derive(["message", "callback_query"], (context) => ({
+    render: defineView.buildRender(context, () => ({
+        user: context.from,
+        locale: context.session.locale,
+        onboarding: context.onboarding?.welcome.snapshot,
+    })),
+}));
+```
+
+Why a thunk instead of a plain object? Globals captured at `.derive()` time are a snapshot — if middleware later mutates `context.session` or advances onboarding, a view rendered afterwards would still see the stale copy. The thunk re-reads on every render, so views always observe the current state.
+
+If you use an adapter factory (`initViewsBuilder<G>().from(g => adapter)`), the factory is also called per render with the freshly resolved globals — so per-locale adapters switch correctly when the locale changes mid-handler.
+
+The plain-object form still works unchanged for globals that never mutate.
+
 ## Media
 
 The `.media()` method on `ResponseView` lets you attach media to a view — either a single item or a group.

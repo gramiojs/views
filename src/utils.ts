@@ -27,7 +27,7 @@ export interface InitViewsBuilderReturn<Globals extends object> {
 
 	buildRender: (
 		context: Context<BotLike>,
-		globals: Globals,
+		globals: Globals | (() => Globals),
 	) => {
 		<View extends ViewRender<any, any>>(
 			view: View,
@@ -58,7 +58,7 @@ export interface InitViewsBuilderWithAdapterReturn<
 
 	buildRender: (
 		context: Context<BotLike>,
-		globals: Globals,
+		globals: Globals | (() => Globals),
 	) => AdapterRenderFunction<Globals, M>;
 }
 

@@ -1,4 +1,10 @@
-import type { BotLike, ContextType, MaybePromise, MessageContext, TelegramInputMedia } from "gramio";
+import type {
+	BotLike,
+	ContextType,
+	MaybePromise,
+	MessageContext,
+	TelegramInputMedia,
+} from "gramio";
 import { ResponseView } from "./response.ts";
 import type { NonEditableMedia } from "./response.ts";
 import { isInlineMarkup, type WithResponseContext } from "./utils.ts";
@@ -7,9 +13,13 @@ const NON_EDITABLE_TYPES = new Set<string>(["sticker", "voice", "video_note"]);
 
 const responseKey = "response";
 
-export type RenderSendResult = MessageContext<BotLike> | MessageContext<BotLike>[];
+export type RenderSendResult =
+	| MessageContext<BotLike>
+	| MessageContext<BotLike>[];
 // Derive edit result from gramio's actual method signature to stay in sync automatically
-type EditResult = Awaited<ReturnType<ContextType<BotLike, "callback_query">["editText"]>>;
+type EditResult = Awaited<
+	ReturnType<ContextType<BotLike, "callback_query">["editText"]>
+>;
 export type RenderResult = RenderSendResult | EditResult | undefined;
 
 export class ViewRender<Globals extends object, Args extends any[]> {
@@ -22,11 +32,13 @@ export class ViewRender<Globals extends object, Args extends any[]> {
 
 	async renderWithContext(
 		context: ContextType<BotLike, "message" | "callback_query">,
-		globals: Globals,
+		globals: Globals | (() => Globals),
 		args: Args,
 		strategyRaw?: "send" | "edit",
 	): Promise<RenderResult> {
-		const contextData = this.createContext(globals);
+		const resolved =
+			typeof globals === "function" ? (globals as () => Globals)() : globals;
+		const contextData = this.createContext(resolved);
 		const result = await this.render.apply(contextData, args);
 		const response = result[responseKey];
 

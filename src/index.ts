@@ -51,44 +51,40 @@ export function initViewsBuilder<
 
 		result.buildRender = (context, globals) => {
 			const ctx = context as any;
-			const adapter =
+
+			const resolveGlobals = (): Globals =>
+				typeof globals === "function" ? (globals as () => Globals)() : globals;
+
+			const resolveAdapter = (resolved: Globals) =>
 				typeof adapterOrFactory === "function"
-					? adapterOrFactory(globals)
+					? adapterOrFactory(resolved)
 					: adapterOrFactory;
 
-			const render = (viewOrKey: any, ...args: any[]) => {
+			const dispatch = (
+				viewOrKey: any,
+				args: any[],
+				strategy?: "send" | "edit",
+			) => {
+				const resolved = resolveGlobals();
 				if (typeof viewOrKey === "string") {
-					const viewRender = adapter.resolve(viewOrKey);
-					return viewRender.renderWithContext(ctx, globals, args as any);
-				}
-				return viewOrKey.renderWithContext(ctx, globals, args);
-			};
-
-			render.send = (viewOrKey: any, ...args: any[]) => {
-				if (typeof viewOrKey === "string") {
+					const adapter = resolveAdapter(resolved);
 					const viewRender = adapter.resolve(viewOrKey);
 					return viewRender.renderWithContext(
 						ctx,
-						globals,
+						resolved,
 						args as any,
-						"send",
+						strategy,
 					);
 				}
-				return viewOrKey.renderWithContext(ctx, globals, args, "send");
+				return viewOrKey.renderWithContext(ctx, resolved, args, strategy);
 			};
 
-			render.edit = (viewOrKey: any, ...args: any[]) => {
-				if (typeof viewOrKey === "string") {
-					const viewRender = adapter.resolve(viewOrKey);
-					return viewRender.renderWithContext(
-						ctx,
-						globals,
-						args as any,
-						"edit",
-					);
-				}
-				return viewOrKey.renderWithContext(ctx, globals, args, "edit");
-			};
+			const render = (viewOrKey: any, ...args: any[]) =>
+				dispatch(viewOrKey, args);
+			render.send = (viewOrKey: any, ...args: any[]) =>
+				dispatch(viewOrKey, args, "send");
+			render.edit = (viewOrKey: any, ...args: any[]) =>
+				dispatch(viewOrKey, args, "edit");
 
 			return render as any;
 		};
